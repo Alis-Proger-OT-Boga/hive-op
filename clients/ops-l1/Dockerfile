@@ -26,7 +26,7 @@ RUN chmod +x /entrypoint.sh
 
 # Deploy contracts using Hardhat
 RUN git clone https://github.com/ethereum-optimism/optimistic-specs /opt
-RUN cd /opt && git submodule init && git submodule update
+RUN cd /opt && git fetch && git checkout fix-seq-num-reorgs && git submodule init && git submodule update
 RUN cp -r /opt/packages/contracts /hive/contracts
 # Defer until L1 rpc server is up; called from devnet.go
 ADD deploy.sh /hive-bin/deploy.sh

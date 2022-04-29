@@ -18,21 +18,22 @@ type testSpec struct {
 
 var tests = []testSpec{
 	// HTTP RPC tests.
-	{Name: "http/GenesisBlockByHash", Run: genesisBlockByHashTest},
-	{Name: "http/GenesisBlockByNumber", Run: genesisBlockByNumberTest},
-	{Name: "http/GenesisHeaderByHash", Run: genesisHeaderByHashTest},
-	{Name: "http/GenesisHeaderByNumber", Run: genesisHeaderByNumberTest},
-	{Name: "http/SyncProgress", Run: syncProgressTest},
+	{Name: "http/BalanceAndNonceAt", Run: balanceAndNonceAtTest},
+	//{Name: "http/GenesisBlockByHash", Run: genesisBlockByHashTest},
+	//{Name: "http/GenesisBlockByNumber", Run: genesisBlockByNumberTest},
+	//{Name: "http/GenesisHeaderByHash", Run: genesisHeaderByHashTest},
+	//{Name: "http/GenesisHeaderByNumber", Run: genesisHeaderByNumberTest},
+	//{Name: "http/SyncProgress", Run: syncProgressTest},
 
-	// WebSocket RPC tests.
-	{Name: "ws/GenesisBlockByHash", Run: genesisBlockByHashTest},
-	{Name: "ws/GenesisBlockByNumber", Run: genesisBlockByNumberTest},
-	{Name: "ws/GenesisHeaderByHash", Run: genesisHeaderByHashTest},
-	{Name: "ws/GenesisHeaderByNumber", Run: genesisHeaderByNumberTest},
-	{Name: "ws/SyncProgress", Run: syncProgressTest},
+	//// WebSocket RPC tests.
+	//{Name: "ws/GenesisBlockByHash", Run: genesisBlockByHashTest},
+	//{Name: "ws/GenesisBlockByNumber", Run: genesisBlockByNumberTest},
+	//{Name: "ws/GenesisHeaderByHash", Run: genesisHeaderByHashTest},
+	//{Name: "ws/GenesisHeaderByNumber", Run: genesisHeaderByNumberTest},
+	//{Name: "ws/SyncProgress", Run: syncProgressTest},
 
-	// WebSocket subscription tests.
-	{Name: "ws/NewHeadSubscription", Run: newHeadSubscriptionTest},
+	//// WebSocket subscription tests.
+	//{Name: "ws/NewHeadSubscription", Run: newHeadSubscriptionTest},
 }
 
 func main() {
