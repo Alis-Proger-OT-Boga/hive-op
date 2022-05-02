@@ -18,6 +18,7 @@ type testSpec struct {
 
 var tests = []testSpec{
 	// HTTP RPC tests.
+	{Name: "http/BalanceAndNonceAt", Run: balanceAndNonceAtTest},
 	{Name: "http/GenesisBlockByHash", Run: genesisBlockByHashTest},
 	{Name: "http/GenesisBlockByNumber", Run: genesisBlockByNumberTest},
 	{Name: "http/GenesisHeaderByHash", Run: genesisHeaderByHashTest},
