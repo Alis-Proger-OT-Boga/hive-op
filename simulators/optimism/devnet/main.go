@@ -20,6 +20,7 @@ var tests = []testSpec{
 	// HTTP RPC tests.
 	{Name: "http/BalanceAndNonceAt", Run: balanceAndNonceAtTest},
 	{Name: "http/ContractDeployment", Run: deployContractTest},
+	{Name: "http/CodeAt", Run: CodeAtTest},
 	{Name: "http/ContractDeploymentOutOfGas", Run: deployContractOutOfGasTest},
 	{Name: "http/GenesisBlockByHash", Run: genesisBlockByHashTest},
 	{Name: "http/GenesisBlockByNumber", Run: genesisBlockByNumberTest},

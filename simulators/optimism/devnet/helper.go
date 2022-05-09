@@ -29,7 +29,8 @@ type TestEnv struct {
 	Eth   *ethclient.Client
 	Vault *vault
 
-	genesis []byte
+	genesis              []byte
+	deployedContractAddr common.Address
 
 	// This holds most recent context created by the Ctx method.
 	// Every time Ctx is called, it creates a new context with the default
@@ -51,10 +52,10 @@ func runHTTP(t *hivesim.T, c *hivesim.Client, v *vault, g []byte, fn func(*TestE
 	rpcClient, _ := rpc.DialHTTPWithClient(fmt.Sprintf("http://%v:9545/", c.IP), client)
 	defer rpcClient.Close()
 	env := &TestEnv{
-		T:     t,
-		RPC:   rpcClient,
-		Eth:   ethclient.NewClient(rpcClient),
-		Vault: v,
+		T:       t,
+		RPC:     rpcClient,
+		Eth:     ethclient.NewClient(rpcClient),
+		Vault:   v,
 		genesis: g,
 	}
 	fn(env)
@@ -74,10 +75,10 @@ func runWS(t *hivesim.T, c *hivesim.Client, v *vault, g []byte, fn func(*TestEnv
 	defer rpcClient.Close()
 
 	env := &TestEnv{
-		T:     t,
-		RPC:   rpcClient,
-		Eth:   ethclient.NewClient(rpcClient),
-		Vault: v,
+		T:       t,
+		RPC:     rpcClient,
+		Eth:     ethclient.NewClient(rpcClient),
+		Vault:   v,
 		genesis: g,
 	}
 	fn(env)

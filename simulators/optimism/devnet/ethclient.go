@@ -83,6 +83,16 @@ func genesisBlockByNumberTest(t *TestEnv) {
 	}
 }
 
+// CodeAtTest tests the code for the pre-deployed contract.
+func CodeAtTest(t *TestEnv) {
+	code, err := t.Eth.CodeAt(t.Ctx(), t.deployedContractAddr, big0)
+	if err != nil {
+		t.Fatalf("Could not fetch code for predeployed contract: %v", err)
+	}
+	if bytes.Compare(runtimeCode, code) != 0 {
+		t.Fatalf("Unexpected code, want %x, got %x", runtimeCode, code)
+	}
+}
 
 // deployContractTest deploys `contractSrc` and tests if the code and state
 // on the contract address contain the expected values (as set in the ctor).
@@ -139,6 +149,8 @@ func deployContractTest(t *TestEnv) {
 	} else {
 		t.Errorf("Unable to retrieve storage pos 0x01 on address %x: %v", contractAddress, err)
 	}
+
+	t.deployedContractAddr = contractAddress
 
 	// test contract state, map on pos 1 with key myAccount must be 1234
 	storageKey := make([]byte, 64)
