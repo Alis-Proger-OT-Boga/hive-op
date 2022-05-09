@@ -85,7 +85,7 @@ func genesisBlockByNumberTest(t *TestEnv) {
 
 // CodeAtTest tests the code for the pre-deployed contract.
 func CodeAtTest(t *TestEnv) {
-	code, err := t.Eth.CodeAt(t.Ctx(), t.deployedContractAddr, big0)
+	code, err := t.Eth.CodeAt(t.Ctx(), t.Config.DeployedContractAddr, big0)
 	if err != nil {
 		t.Fatalf("Could not fetch code for predeployed contract: %v", err)
 	}
@@ -98,7 +98,7 @@ func CodeAtTest(t *TestEnv) {
 // on the contract address contain the expected values (as set in the ctor).
 func deployContractTest(t *TestEnv) {
 	var (
-		address = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		address = t.Config.Vault.createAccount(t, big.NewInt(params.Ether))
 		nonce   = uint64(0)
 
 		expectedContractAddress = crypto.CreateAddress(address, nonce)
@@ -106,7 +106,7 @@ func deployContractTest(t *TestEnv) {
 	)
 
 	rawTx := types.NewContractCreation(nonce, big0, gasLimit, gasPrice, deployCode)
-	deployTx, err := t.Vault.signTransaction(address, rawTx)
+	deployTx, err := t.Config.Vault.signTransaction(address, rawTx)
 	if err != nil {
 		t.Fatalf("Unable to sign deploy tx: %v", err)
 	}
@@ -150,8 +150,6 @@ func deployContractTest(t *TestEnv) {
 		t.Errorf("Unable to retrieve storage pos 0x01 on address %x: %v", contractAddress, err)
 	}
 
-	t.deployedContractAddr = contractAddress
-
 	// test contract state, map on pos 1 with key myAccount must be 1234
 	storageKey := make([]byte, 64)
 	copy(storageKey[12:32], address.Bytes())
@@ -174,7 +172,7 @@ func deployContractTest(t *TestEnv) {
 // the contract address.
 func deployContractOutOfGasTest(t *TestEnv) {
 	var (
-		address         = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		address         = t.Config.Vault.createAccount(t, big.NewInt(params.Ether))
 		nonce           = uint64(0)
 		contractAddress = crypto.CreateAddress(address, nonce)
 		gasLimit        = uint64(240000) // insufficient gas
@@ -183,7 +181,7 @@ func deployContractOutOfGasTest(t *TestEnv) {
 
 	// Deploy the contract.
 	rawTx := types.NewContractCreation(nonce, big0, gasLimit, gasPrice, deployCode)
-	deployTx, err := t.Vault.signTransaction(address, rawTx)
+	deployTx, err := t.Config.Vault.signTransaction(address, rawTx)
 	if err != nil {
 		t.Fatalf("unable to sign deploy tx: %v", err)
 	}
@@ -261,9 +259,9 @@ func newHeadSubscriptionTest(t *TestEnv) {
 // address are updated correct.
 func balanceAndNonceAtTest(t *TestEnv) {
 	var (
-		sourceAddr  = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		sourceAddr  = t.Config.Vault.createAccount(t, big.NewInt(params.Ether))
 		sourceNonce = uint64(0)
-		targetAddr  = t.Vault.createAccount(t, nil)
+		targetAddr  = t.Config.Vault.createAccount(t, nil)
 	)
 
 	// Get current balance
@@ -291,7 +289,7 @@ func balanceAndNonceAtTest(t *TestEnv) {
 		gasLimit = uint64(50000)
 	)
 	rawTx := types.NewTransaction(sourceNonce, targetAddr, amount, gasLimit, gasPrice, nil)
-	valueTx, err := t.Vault.signTransaction(sourceAddr, rawTx)
+	valueTx, err := t.Config.Vault.signTransaction(sourceAddr, rawTx)
 	if err != nil {
 		t.Fatalf("Unable to sign value tx: %v", err)
 	}

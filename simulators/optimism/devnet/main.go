@@ -1,12 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"math/big"
 	"time"
 
 	"fmt"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/hive/hivesim"
 )
 
@@ -16,11 +22,57 @@ type testSpec struct {
 	Run   func(*TestEnv)
 }
 
+func setup(t *TestEnv) {
+	var (
+		address = t.Config.Vault.createAccount(t, big.NewInt(params.Ether))
+		nonce   = uint64(0)
+
+		expectedContractAddress = crypto.CreateAddress(address, nonce)
+		gasLimit                = uint64(1200000)
+	)
+
+	rawTx := types.NewContractCreation(nonce, big0, gasLimit, gasPrice, deployCode)
+	deployTx, err := t.Config.Vault.signTransaction(address, rawTx)
+	if err != nil {
+		t.Fatalf("Unable to sign deploy tx: %v", err)
+	}
+
+	// deploy contract
+	if err := t.Eth.SendTransaction(t.Ctx(), deployTx); err != nil {
+		t.Fatalf("Unable to send transaction: %v", err)
+	}
+
+	t.Logf("Deploy transaction: 0x%x", deployTx.Hash())
+
+	// fetch transaction receipt for contract address
+	var contractAddress common.Address
+	receipt, err := waitForTxConfirmations(t, deployTx.Hash(), 5)
+	if err != nil {
+		t.Fatalf("Unable to retrieve receipt: %v", err)
+	}
+
+	// ensure receipt has the expected address
+	if expectedContractAddress != receipt.ContractAddress {
+		t.Fatalf("Contract deploy on different address, expected %x, got %x", expectedContractAddress, contractAddress)
+	}
+
+	// test deployed code matches runtime code
+	code, err := t.Eth.CodeAt(t.Ctx(), receipt.ContractAddress, nil)
+	if err != nil {
+		t.Fatalf("Unable to fetch contract code: %v", err)
+	}
+	if bytes.Compare(runtimeCode, code) != 0 {
+		t.Errorf("Deployed code doesn't match, expected %x, got %x", runtimeCode, code)
+	}
+
+	t.Config.DeployedContractAddr = contractAddress
+}
+
 var tests = []testSpec{
 	// HTTP RPC tests.
 	{Name: "http/BalanceAndNonceAt", Run: balanceAndNonceAtTest},
-	{Name: "http/ContractDeployment", Run: deployContractTest},
 	{Name: "http/CodeAt", Run: CodeAtTest},
+	{Name: "http/ContractDeployment", Run: deployContractTest},
 	{Name: "http/ContractDeploymentOutOfGas", Run: deployContractOutOfGasTest},
 	{Name: "http/GenesisBlockByHash", Run: genesisBlockByHashTest},
 	{Name: "http/GenesisBlockByNumber", Run: genesisBlockByNumberTest},
@@ -83,8 +135,12 @@ func runAllTests(t *hivesim.T) {
 
 	c := d.l2.Client
 
-	vault := newVault()
-	genesis := []byte(d.l2Genesis)
+	// Setup deployed contract
+	config := &TestConfig{
+		Vault:          newVault(),
+		L1GenesisBlock: []byte(d.l2Genesis),
+	}
+	runHTTP(t, c, config, setup)
 
 	s := newSemaphore(16)
 	for _, test := range tests {
@@ -98,9 +154,9 @@ func runAllTests(t *hivesim.T) {
 				Run: func(t *hivesim.T) {
 					switch test.Name[:strings.IndexByte(test.Name, '/')] {
 					case "http":
-						runHTTP(t, c, vault, genesis, test.Run)
+						runHTTP(t, c, config, test.Run)
 					case "ws":
-						runWS(t, c, vault, genesis, test.Run)
+						runWS(t, c, config, test.Run)
 					default:
 						panic("bad test prefix in name " + test.Name)
 					}
