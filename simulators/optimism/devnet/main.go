@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"math/big"
 	"time"
@@ -9,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
@@ -45,7 +43,6 @@ func setup(t *TestEnv) {
 	t.Logf("Deploy transaction: 0x%x", deployTx.Hash())
 
 	// fetch transaction receipt for contract address
-	var contractAddress common.Address
 	receipt, err := waitForTxConfirmations(t, deployTx.Hash(), 5)
 	if err != nil {
 		t.Fatalf("Unable to retrieve receipt: %v", err)
@@ -53,19 +50,10 @@ func setup(t *TestEnv) {
 
 	// ensure receipt has the expected address
 	if expectedContractAddress != receipt.ContractAddress {
-		t.Fatalf("Contract deploy on different address, expected %x, got %x", expectedContractAddress, contractAddress)
+		t.Fatalf("Contract deploy on different address, expected %x, got %x", expectedContractAddress, receipt.ContractAddress)
 	}
 
-	// test deployed code matches runtime code
-	code, err := t.Eth.CodeAt(t.Ctx(), receipt.ContractAddress, nil)
-	if err != nil {
-		t.Fatalf("Unable to fetch contract code: %v", err)
-	}
-	if bytes.Compare(runtimeCode, code) != 0 {
-		t.Errorf("Deployed code doesn't match, expected %x, got %x", runtimeCode, code)
-	}
-
-	t.Config.DeployedContractAddr = contractAddress
+	t.Config.DeployedContractAddr = receipt.ContractAddress
 }
 
 var tests = []testSpec{

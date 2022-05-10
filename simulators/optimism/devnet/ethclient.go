@@ -83,11 +83,11 @@ func genesisBlockByNumberTest(t *TestEnv) {
 	}
 }
 
-// CodeAtTest tests the code for the pre-deployed contract.
+// CodeAtTest tests the code for the deployed contract.
 func CodeAtTest(t *TestEnv) {
-	code, err := t.Eth.CodeAt(t.Ctx(), t.Config.DeployedContractAddr, big0)
+	code, err := t.Eth.CodeAt(t.Ctx(), t.Config.DeployedContractAddr, nil)
 	if err != nil {
-		t.Fatalf("Could not fetch code for predeployed contract: %v", err)
+		t.Fatalf("Could not fetch code for deployed contract: %v", err)
 	}
 	if bytes.Compare(runtimeCode, code) != 0 {
 		t.Fatalf("Unexpected code, want %x, got %x", runtimeCode, code)
