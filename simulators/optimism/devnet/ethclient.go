@@ -286,7 +286,7 @@ func deployContractTest(t *TestEnv) {
 	var contractAddress common.Address
 	receipt, err := waitForTxConfirmations(t, deployTx.Hash(), 5)
 	if err != nil {
-		t.Fatalf("Unable to retrieve receipt: %v", err)
+		t.Fatalf("Unable to retrieve receipt %v: %v", deployTx.Hash(), err)
 	}
 
 	// ensure receipt has the expected address
@@ -357,7 +357,7 @@ func deployContractOutOfGasTest(t *TestEnv) {
 	// Wait for the transaction receipt.
 	receipt, err := waitForTxConfirmations(t, deployTx.Hash(), 5)
 	if err != nil {
-		t.Fatalf("unable to fetch tx receipt: %v", err)
+		t.Fatalf("unable to fetch tx receipt %v: %v", deployTx.Hash(), err)
 	}
 	// Check receipt fields.
 	if receipt.Status != types.ReceiptStatusFailed {
@@ -411,7 +411,7 @@ func receiptTest(t *TestEnv) {
 	// wait for transaction
 	receipt, err := waitForTxConfirmations(t, tx.Hash(), 0)
 	if err != nil {
-		t.Fatalf("Unable to retrieve tx receipt: %v", err)
+		t.Fatalf("Unable to retrieve tx receipt %v: %v", tx.Hash(), err)
 	}
 	// validate receipt fields
 	if receipt.TxHash != tx.Hash() {

@@ -98,7 +98,7 @@ func transactContractTest(t *TestEnv) {
 	var contractAddress common.Address
 	receipt, err := waitForTxConfirmations(t, deployTx.Hash(), 5)
 	if err != nil {
-		t.Fatalf("Unable to retrieve receipt: %v", err)
+		t.Fatalf("Unable to retrieve receipt %v: %v", deployTx.Hash(), err)
 	}
 
 	// ensure receipt has the expected address
@@ -185,7 +185,7 @@ func transactContractSubscriptionTest(t *TestEnv) {
 	// fetch transaction receipt for contract address
 	receipt, err := waitForTxConfirmations(t, deployTx.Hash(), 5)
 	if err != nil {
-		t.Fatalf("Unable to retrieve receipt: %v", err)
+		t.Fatalf("Unable to retrieve receipt %v: %v", deployTx.Hash(), err)
 	}
 
 	// ensure receipt has the expected address
