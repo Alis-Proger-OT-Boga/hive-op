@@ -17,7 +17,6 @@ type testSpec struct {
 }
 
 var tests = []testSpec{
-	// HTTP RPC tests.
 	{Name: "http/BalanceAndNonceAt", Run: balanceAndNonceAtTest},
 	{Name: "http/CanonicalChain", Run: canonicalChainTest},
 	{Name: "http/CodeAt", Run: CodeAtTest},
@@ -38,6 +37,15 @@ var tests = []testSpec{
 	{Name: "http/ABICall", Run: callContractTest},
 	{Name: "http/ABITransact", Run: transactContractTest},
 
+	// WebSocket ABI tests.
+	{Name: "ws/ABICall", Run: callContractTest},
+	{Name: "ws/ABITransact", Run: transactContractTest},
+
+	// WebSocket subscription tests.
+	{Name: "ws/NewHeadSubscription", Run: newHeadSubscriptionTest},
+	{Name: "ws/LogSubscription", Run: logSubscriptionTest},
+	{Name: "ws/TransactionInBlockSubscription", Run: transactionInBlockSubscriptionTest},
+
 	// WebSocket RPC tests.
 	{Name: "ws/BalanceAndNonceAt", Run: balanceAndNonceAtTest},
 	{Name: "ws/CanonicalChain", Run: canonicalChainTest},
@@ -54,15 +62,6 @@ var tests = []testSpec{
 	{Name: "ws/TransactionCount", Run: transactionCountTest},
 	{Name: "ws/TransactionInBlock", Run: transactionInBlockTest},
 	{Name: "ws/TransactionReceipt", Run: TransactionReceiptTest},
-
-	// WebSocket subscription tests.
-	{Name: "ws/NewHeadSubscription", Run: newHeadSubscriptionTest},
-	{Name: "ws/LogSubscription", Run: logSubscriptionTest},
-	{Name: "ws/TransactionInBlockSubscription", Run: transactionInBlockSubscriptionTest},
-
-	// WebSocket ABI tests.
-	{Name: "ws/ABICall", Run: callContractTest},
-	{Name: "ws/ABITransact", Run: transactContractTest},
 }
 
 func main() {
