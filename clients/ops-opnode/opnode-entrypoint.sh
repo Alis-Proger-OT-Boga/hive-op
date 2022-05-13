@@ -41,8 +41,13 @@ exec op \
     --l1=ws://172.17.0.3:8546 \
     --l2=ws://172.17.0.4:9546 \
     --sequencing.enabled \
+    --p2p.sequencer.key=/config/p2p-sequencer-key.txt \
     --rollup.config=/hive/rollup.json \
-    --batchsubmitter.key=/config/bss-key.txt \
     --l2.eth=http://172.17.0.4:9545 \
     --rpc.addr=0.0.0.0 \
-    --rpc.port=7545
+    --rpc.port=7545 \
+    --p2p.listen.ip=0.0.0.0 \
+    --p2p.listen.tcp=9003 \
+    --p2p.listen.udp=9003 \
+    --snapshotlog.file=/snapshot.log \
+    --p2p.priv.path=/config/p2p-node-key.txt

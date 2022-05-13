@@ -14,9 +14,9 @@ RUN apk add jq curl
 COPY --from=builder /app/bin/op /usr/local/bin
 COPY ./opnode-entrypoint.sh /opnode-entrypoint.sh
 COPY ./rollup.json /rollup.json
-RUN mkdir /config
-RUN mkdir /hive
-COPY ./bss-key.txt /config
+RUN mkdir /hive /config
+COPY p2p-node-key.txt /config
+COPY p2p-sequencer-key.txt /config
 
 RUN /app/bin/opnode --version 2>/dev/null | head -1 > /version.txt
 
