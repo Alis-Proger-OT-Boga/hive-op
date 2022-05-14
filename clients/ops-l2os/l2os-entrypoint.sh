@@ -13,7 +13,7 @@ curl \
 
 L2OO_ADDRESS=$(jq -r .address < /L2OutputOracle.json)
 
-exec l2os \
+exec op-proposer \
     --l1-eth-rpc http://172.17.0.3:8545 \
     --l2-eth-rpc http://172.17.0.4:9545 \
     --rollup-rpc http://172.17.0.5:7545 \

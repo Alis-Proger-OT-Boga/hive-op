@@ -20,7 +20,7 @@ L2_GENESIS=$(curl \
 SEQUENCER_GENESIS_HASH="$(echo $L2_GENESIS | jq -r '.result.hash')"
 SEQUENCER_BATCH_INBOX_ADDRESS="$(cat /rollup.json | jq -r '.batch_inbox_address')"
 
-exec bss \
+exec op-batcher \
     --l1-eth-rpc=http://172.17.0.3:8545 \
     --l2-eth-rpc=http://172.17.0.4:9545 \
     --rollup-rpc=http://172.17.0.5:7545 \

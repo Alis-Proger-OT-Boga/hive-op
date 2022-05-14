@@ -37,7 +37,7 @@ jq ". | .genesis.l1.hash = \"$(echo $L1_GENESIS | jq -r '.result.hash')\"" < /ro
    jq ". | .genesis.l2_time = $(echo $L2_GENESIS | jq -r '.result.timestamp' | xargs printf "%d")" | \
    jq ". | .deposit_contract_address = \"$DEPOSIT_CONTRACT_ADDRESS\"" > /hive/rollup.json
 
-exec op \
+exec op-node \
     --l1=ws://172.17.0.3:8546 \
     --l2=ws://172.17.0.4:9546 \
     --sequencing.enabled \
