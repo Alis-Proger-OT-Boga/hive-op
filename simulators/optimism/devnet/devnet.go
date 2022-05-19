@@ -16,8 +16,9 @@ import (
 
 var (
 	// parameters used for signing transactions
-	chainID  = big.NewInt(901)
-	gasPrice = big.NewInt(30 * params.GWei)
+	l1ChainID = big.NewInt(900)
+	l2ChainID = big.NewInt(901)
+	gasPrice  = big.NewInt(30 * params.GWei)
 
 	// would be nice to use a networkID that's different from chainID,
 	// but some clients don't support the distinction properly.
@@ -189,7 +190,7 @@ func (d *Devnet) StartL2() error {
 		"HIVE_LOGLEVEL":        os.Getenv("HIVE_LOGLEVEL"),
 		"HIVE_NODETYPE":        "full",
 		"HIVE_NETWORK_ID":      networkID.String(),
-		"HIVE_CHAIN_ID":        chainID.String(),
+		"HIVE_CHAIN_ID":        l2ChainID.String(),
 	}
 
 	genesisTimestampOpt := hivesim.WithDynamicFile("/genesis_timestamp", bytesSource([]byte(d.genesisTimestamp)))

@@ -2,17 +2,24 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"math/big"
 	"math/rand"
 	"strings"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
+	"github.com/ethereum-optimism/optimism/op-node/withdrawals"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -74,9 +81,11 @@ var (
 	big1 = big.NewInt(1)
 )
 
+var l1BlockTime = 15 * time.Second
+
 // CodeAtTest tests the code for the pre-deployed contract.
 func CodeAtTest(t *TestEnv) {
-	code, err := t.Eth.CodeAt(t.Ctx(), predeployedContractAddr, big0)
+	code, err := t.L2Eth.CodeAt(t.Ctx(), predeployedContractAddr, big0)
 	if err != nil {
 		t.Fatalf("Could not fetch code for predeployed contract: %v", err)
 	}
@@ -88,7 +97,7 @@ func CodeAtTest(t *TestEnv) {
 // estimateGasTest fetches the estimated gas usage for a call to the events method.
 func estimateGasTest(t *TestEnv) {
 	var (
-		address        = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		address        = t.Vault.createAccount(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 		contractABI, _ = abi.JSON(strings.NewReader(predeployedContractABI))
 		intArg         = big.NewInt(rand.Int63())
 	)
@@ -102,7 +111,7 @@ func estimateGasTest(t *TestEnv) {
 		To:   &predeployedContractAddr,
 		Data: payload,
 	}
-	estimated, err := t.Eth.EstimateGas(t.Ctx(), msg)
+	estimated, err := t.L2Eth.EstimateGas(t.Ctx(), msg)
 	if err != nil {
 		t.Fatalf("Could not estimate gas: %v", err)
 	}
@@ -110,12 +119,12 @@ func estimateGasTest(t *TestEnv) {
 	// send the actual tx and test gas usage
 	txGas := estimated + 100000
 	rawTx := types.NewTransaction(0, *msg.To, msg.Value, txGas, big.NewInt(32*params.GWei), msg.Data)
-	tx, err := t.Vault.signTransaction(address, rawTx)
+	tx, err := t.Vault.l2TransactionSigner(address, rawTx)
 	if err != nil {
 		t.Fatalf("Could not sign transaction: %v", err)
 	}
 
-	if err := t.Eth.SendTransaction(t.Ctx(), tx); err != nil {
+	if err := t.L2Eth.SendTransaction(t.Ctx(), tx); err != nil {
 		t.Fatalf("Could not send tx: %v", err)
 	}
 
@@ -140,7 +149,7 @@ func estimateGasTest(t *TestEnv) {
 func genesisHeaderByHashTest(t *TestEnv) {
 	gblock := t.LoadGenesis()
 
-	headerByHash, err := t.Eth.HeaderByHash(t.Ctx(), gblock.Hash())
+	headerByHash, err := t.L2Eth.HeaderByHash(t.Ctx(), gblock.Hash())
 	if err != nil {
 		t.Fatalf("Unable to fetch block %x: %v", gblock.Hash(), err)
 	}
@@ -155,7 +164,7 @@ func genesisHeaderByHashTest(t *TestEnv) {
 func genesisHeaderByNumberTest(t *TestEnv) {
 	gblock := t.LoadGenesis()
 
-	headerByNum, err := t.Eth.HeaderByNumber(t.Ctx(), big0)
+	headerByNum, err := t.L2Eth.HeaderByNumber(t.Ctx(), big0)
 	if err != nil {
 		t.Fatalf("Unable to fetch genesis block: %v", err)
 	}
@@ -169,7 +178,7 @@ func genesisHeaderByNumberTest(t *TestEnv) {
 func genesisBlockByHashTest(t *TestEnv) {
 	gblock := t.LoadGenesis()
 
-	blockByHash, err := t.Eth.BlockByHash(t.Ctx(), gblock.Hash())
+	blockByHash, err := t.L2Eth.BlockByHash(t.Ctx(), gblock.Hash())
 	if err != nil {
 		t.Fatalf("Unable to fetch block %x: %v", gblock.Hash(), err)
 	}
@@ -184,7 +193,7 @@ func genesisBlockByHashTest(t *TestEnv) {
 func genesisBlockByNumberTest(t *TestEnv) {
 	gblock := t.LoadGenesis()
 
-	blockByNum, err := t.Eth.BlockByNumber(t.Ctx(), big0)
+	blockByNum, err := t.L2Eth.BlockByNumber(t.Ctx(), big0)
 	if err != nil {
 		t.Fatalf("Unable to fetch genesis block: %v", err)
 	}
@@ -199,7 +208,7 @@ func genesisBlockByNumberTest(t *TestEnv) {
 func canonicalChainTest(t *TestEnv) {
 	// wait a bit so there is actually a chain with enough height
 	for {
-		latestBlock, err := t.Eth.BlockByNumber(t.Ctx(), nil)
+		latestBlock, err := t.L2Eth.BlockByNumber(t.Ctx(), nil)
 		if err != nil {
 			t.Fatalf("Unable to fetch latest block")
 		}
@@ -211,7 +220,7 @@ func canonicalChainTest(t *TestEnv) {
 
 	var childBlock *types.Block
 	for i := 10; i >= 0; i-- {
-		block, err := t.Eth.BlockByNumber(t.Ctx(), big.NewInt(int64(i)))
+		block, err := t.L2Eth.BlockByNumber(t.Ctx(), big.NewInt(int64(i)))
 		if err != nil {
 			t.Fatalf("Unable to fetch block #%d", i)
 		}
@@ -224,14 +233,14 @@ func canonicalChainTest(t *TestEnv) {
 		// try to fetch all txs and receipts and do some basic validation on them
 		// to check if the fetched chain is consistent.
 		for _, tx := range block.Transactions() {
-			fetchedTx, _, err := t.Eth.TransactionByHash(t.Ctx(), tx.Hash())
+			fetchedTx, _, err := t.L2Eth.TransactionByHash(t.Ctx(), tx.Hash())
 			if err != nil {
 				t.Fatalf("Unable to fetch transaction %x from block %x: %v", tx.Hash(), block.Hash(), err)
 			}
 			if fetchedTx == nil {
 				t.Fatalf("Transaction %x could not be found but was included in block %x", tx.Hash(), block.Hash())
 			}
-			receipt, err := t.Eth.TransactionReceipt(t.Ctx(), fetchedTx.Hash())
+			receipt, err := t.L2Eth.TransactionReceipt(t.Ctx(), fetchedTx.Hash())
 			if err != nil {
 				t.Fatalf("Unable to fetch receipt for %x from block %x: %v", fetchedTx.Hash(), block.Hash(), err)
 			}
@@ -245,7 +254,7 @@ func canonicalChainTest(t *TestEnv) {
 
 		// make sure all uncles can be fetched
 		for _, uncle := range block.Uncles() {
-			uBlock, err := t.Eth.HeaderByHash(t.Ctx(), uncle.Hash())
+			uBlock, err := t.L2Eth.HeaderByHash(t.Ctx(), uncle.Hash())
 			if err != nil {
 				t.Fatalf("Unable to fetch uncle block: %v", err)
 			}
@@ -262,7 +271,7 @@ func canonicalChainTest(t *TestEnv) {
 // on the contract address contain the expected values (as set in the ctor).
 func deployContractTest(t *TestEnv) {
 	var (
-		address = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		address = t.Vault.createAccount(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 		nonce   = uint64(0)
 
 		expectedContractAddress = crypto.CreateAddress(address, nonce)
@@ -270,13 +279,13 @@ func deployContractTest(t *TestEnv) {
 	)
 
 	rawTx := types.NewContractCreation(nonce, big0, gasLimit, gasPrice, deployCode)
-	deployTx, err := t.Vault.signTransaction(address, rawTx)
+	deployTx, err := t.Vault.l2TransactionSigner(address, rawTx)
 	if err != nil {
 		t.Fatalf("Unable to sign deploy tx: %v", err)
 	}
 
 	// deploy contract
-	if err := t.Eth.SendTransaction(t.Ctx(), deployTx); err != nil {
+	if err := t.L2Eth.SendTransaction(t.Ctx(), deployTx); err != nil {
 		t.Fatalf("Unable to send transaction: %v", err)
 	}
 
@@ -295,7 +304,7 @@ func deployContractTest(t *TestEnv) {
 	}
 
 	// test deployed code matches runtime code
-	code, err := t.Eth.CodeAt(t.Ctx(), receipt.ContractAddress, nil)
+	code, err := t.L2Eth.CodeAt(t.Ctx(), receipt.ContractAddress, nil)
 	if err != nil {
 		t.Fatalf("Unable to fetch contract code: %v", err)
 	}
@@ -304,7 +313,7 @@ func deployContractTest(t *TestEnv) {
 	}
 
 	// test contract state, pos 0 must be 1234
-	value, err := t.Eth.StorageAt(t.Ctx(), receipt.ContractAddress, common.Hash{}, nil)
+	value, err := t.L2Eth.StorageAt(t.Ctx(), receipt.ContractAddress, common.Hash{}, nil)
 	if err == nil {
 		v := new(big.Int).SetBytes(value)
 		if v.Uint64() != 1234 {
@@ -320,7 +329,7 @@ func deployContractTest(t *TestEnv) {
 	storageKey[63] = 1
 	storageKey = crypto.Keccak256(storageKey)
 
-	value, err = t.Eth.StorageAt(t.Ctx(), receipt.ContractAddress, common.BytesToHash(storageKey), nil)
+	value, err = t.L2Eth.StorageAt(t.Ctx(), receipt.ContractAddress, common.BytesToHash(storageKey), nil)
 	if err == nil {
 		v := new(big.Int).SetBytes(value)
 		if v.Uint64() != 1234 {
@@ -336,7 +345,7 @@ func deployContractTest(t *TestEnv) {
 // the contract address.
 func deployContractOutOfGasTest(t *TestEnv) {
 	var (
-		address         = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		address         = t.Vault.createAccount(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 		nonce           = uint64(0)
 		contractAddress = crypto.CreateAddress(address, nonce)
 		gasLimit        = uint64(240000) // insufficient gas
@@ -345,12 +354,12 @@ func deployContractOutOfGasTest(t *TestEnv) {
 
 	// Deploy the contract.
 	rawTx := types.NewContractCreation(nonce, big0, gasLimit, gasPrice, deployCode)
-	deployTx, err := t.Vault.signTransaction(address, rawTx)
+	deployTx, err := t.Vault.l2TransactionSigner(address, rawTx)
 	if err != nil {
 		t.Fatalf("unable to sign deploy tx: %v", err)
 	}
 	t.Logf("out of gas tx: %x", deployTx.Hash())
-	if err := t.Eth.SendTransaction(t.Ctx(), deployTx); err != nil {
+	if err := t.L2Eth.SendTransaction(t.Ctx(), deployTx); err != nil {
 		t.Fatalf("unable to send transaction: %v", err)
 	}
 
@@ -373,7 +382,7 @@ func deployContractOutOfGasTest(t *TestEnv) {
 		t.Errorf("receipt has empty block hash", receipt.BlockHash)
 	}
 	// Check that nothing is deployed at the contract address.
-	code, err := t.Eth.CodeAt(t.Ctx(), contractAddress, nil)
+	code, err := t.L2Eth.CodeAt(t.Ctx(), contractAddress, nil)
 	if err != nil {
 		t.Fatalf("unable to fetch code: %v", err)
 	}
@@ -387,7 +396,7 @@ func deployContractOutOfGasTest(t *TestEnv) {
 func receiptTest(t *TestEnv) {
 	var (
 		contractABI, _ = abi.JSON(strings.NewReader(predeployedContractABI))
-		address        = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		address        = t.Vault.createAccount(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 		nonce          = uint64(0)
 
 		intArg = big.NewInt(rand.Int63())
@@ -399,12 +408,12 @@ func receiptTest(t *TestEnv) {
 	}
 
 	rawTx := types.NewTransaction(nonce, predeployedContractAddr, big0, 500000, gasPrice, payload)
-	tx, err := t.Vault.signTransaction(address, rawTx)
+	tx, err := t.Vault.l2TransactionSigner(address, rawTx)
 	if err != nil {
 		t.Fatalf("Unable to sign deploy tx: %v", err)
 	}
 
-	if err := t.Eth.SendTransaction(t.Ctx(), tx); err != nil {
+	if err := t.L2Eth.SendTransaction(t.Ctx(), tx); err != nil {
 		t.Fatalf("Unable to send transaction: %v", err)
 	}
 
@@ -487,7 +496,7 @@ func validateLog(t *TestEnv, tx *types.Transaction, log types.Log, contractAddre
 
 // syncProgressTest only tests if this function is supported by the node.
 func syncProgressTest(t *TestEnv) {
-	_, err := t.Eth.SyncProgress(t.Ctx())
+	_, err := t.L2Eth.SyncProgress(t.Ctx())
 	if err != nil {
 		t.Fatalf("Unable to determine sync progress: %v", err)
 	}
@@ -497,7 +506,7 @@ func syncProgressTest(t *TestEnv) {
 // and retrieves transaction details by block hash and position.
 func transactionInBlockTest(t *TestEnv) {
 	var (
-		key         = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		key         = t.Vault.createAccount(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 		nonce       = uint64(0)
 		blockNumber = new(big.Int)
 	)
@@ -505,16 +514,16 @@ func transactionInBlockTest(t *TestEnv) {
 	for {
 		blockNumber.Add(blockNumber, big1)
 
-		block, err := t.Eth.BlockByNumber(t.Ctx(), blockNumber)
+		block, err := t.L2Eth.BlockByNumber(t.Ctx(), blockNumber)
 		if err == ethereum.NotFound { // end of chain
 			rawTx := types.NewTransaction(nonce, predeployedVaultAddr, big1, 100000, gasPrice, nil)
 			nonce++
 
-			tx, err := t.Vault.signTransaction(key, rawTx)
+			tx, err := t.Vault.l2TransactionSigner(key, rawTx)
 			if err != nil {
 				t.Fatalf("Unable to sign deploy tx: %v", err)
 			}
-			if err = t.Eth.SendTransaction(t.Ctx(), tx); err != nil {
+			if err = t.L2Eth.SendTransaction(t.Ctx(), tx); err != nil {
 				t.Fatalf("Unable to send transaction: %v", err)
 			}
 			time.Sleep(time.Second)
@@ -527,7 +536,7 @@ func transactionInBlockTest(t *TestEnv) {
 			continue
 		}
 		for i := 0; i < len(block.Transactions()); i++ {
-			_, err := t.Eth.TransactionInBlock(t.Ctx(), block.Hash(), uint(i))
+			_, err := t.L2Eth.TransactionInBlock(t.Ctx(), block.Hash(), uint(i))
 			if err != nil {
 				t.Fatalf("Unable to fetch transaction by block hash and index: %v", err)
 			}
@@ -541,19 +550,19 @@ func transactionInBlockTest(t *TestEnv) {
 func transactionInBlockSubscriptionTest(t *TestEnv) {
 	var heads = make(chan *types.Header, 100)
 
-	sub, err := t.Eth.SubscribeNewHead(t.Ctx(), heads)
+	sub, err := t.L2Eth.SubscribeNewHead(t.Ctx(), heads)
 	if err != nil {
 		t.Fatalf("Unable to subscribe to new heads: %v", err)
 	}
 
-	key := t.Vault.createAccount(t, big.NewInt(params.Ether))
+	key := t.Vault.createAccount(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 	for i := 0; i < 5; i++ {
 		rawTx := types.NewTransaction(uint64(i), predeployedVaultAddr, big1, 100000, gasPrice, nil)
-		tx, err := t.Vault.signTransaction(key, rawTx)
+		tx, err := t.Vault.l2TransactionSigner(key, rawTx)
 		if err != nil {
 			t.Fatalf("Unable to sign deploy tx: %v", err)
 		}
-		if err = t.Eth.SendTransaction(t.Ctx(), tx); err != nil {
+		if err = t.L2Eth.SendTransaction(t.Ctx(), tx); err != nil {
 			t.Fatalf("Unable to send transaction: %v", err)
 		}
 	}
@@ -563,7 +572,7 @@ func transactionInBlockSubscriptionTest(t *TestEnv) {
 	for {
 		head := <-heads
 
-		block, err := t.Eth.BlockByHash(t.Ctx(), head.Hash())
+		block, err := t.L2Eth.BlockByHash(t.Ctx(), head.Hash())
 		if err != nil {
 			t.Fatalf("Unable to retrieve block %x: %v", head.Hash(), err)
 		}
@@ -571,7 +580,7 @@ func transactionInBlockSubscriptionTest(t *TestEnv) {
 			continue
 		}
 		for i := 0; i < len(block.Transactions()); i++ {
-			_, err = t.Eth.TransactionInBlock(t.Ctx(), head.Hash(), uint(i))
+			_, err = t.L2Eth.TransactionInBlock(t.Ctx(), head.Hash(), uint(i))
 			if err != nil {
 				t.Fatalf("Unable to fetch transaction by block hash and index: %v", err)
 			}
@@ -586,7 +595,7 @@ func newHeadSubscriptionTest(t *TestEnv) {
 		heads = make(chan *types.Header)
 	)
 
-	sub, err := t.Eth.SubscribeNewHead(t.Ctx(), heads)
+	sub, err := t.L2Eth.SubscribeNewHead(t.Ctx(), heads)
 	if err != nil {
 		t.Fatalf("Unable to subscribe to new heads: %v", err)
 	}
@@ -595,7 +604,7 @@ func newHeadSubscriptionTest(t *TestEnv) {
 	for i := 0; i < 10; i++ {
 		select {
 		case newHead := <-heads:
-			header, err := t.Eth.HeaderByHash(t.Ctx(), newHead.Hash())
+			header, err := t.L2Eth.HeaderByHash(t.Ctx(), newHead.Hash())
 			if err != nil {
 				t.Fatalf("Unable to fetch header: %v", err)
 			}
@@ -617,7 +626,7 @@ func logSubscriptionTest(t *TestEnv) {
 		logs = make(chan types.Log)
 	)
 
-	sub, err := t.Eth.SubscribeFilterLogs(t.Ctx(), criteria, logs)
+	sub, err := t.L2Eth.SubscribeFilterLogs(t.Ctx(), criteria, logs)
 	if err != nil {
 		t.Fatalf("Unable to create log subscription: %v", err)
 	}
@@ -625,7 +634,7 @@ func logSubscriptionTest(t *TestEnv) {
 
 	var (
 		contractABI, _ = abi.JSON(strings.NewReader(predeployedContractABI))
-		address        = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		address        = t.Vault.createAccount(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 		nonce          = uint64(0)
 
 		arg0 = big.NewInt(rand.Int63())
@@ -634,12 +643,12 @@ func logSubscriptionTest(t *TestEnv) {
 
 	payload, _ := contractABI.Pack("events", arg0, arg1)
 	rawTx := types.NewTransaction(nonce, predeployedContractAddr, big0, 500000, gasPrice, payload)
-	tx, err := t.Vault.signTransaction(address, rawTx)
+	tx, err := t.Vault.l2TransactionSigner(address, rawTx)
 	if err != nil {
 		t.Fatalf("Unable to sign deploy tx: %v", err)
 	}
 
-	if err = t.Eth.SendTransaction(t.Ctx(), tx); err != nil {
+	if err = t.L2Eth.SendTransaction(t.Ctx(), tx); err != nil {
 		t.Fatalf("Unable to send transaction: %v", err)
 	}
 
@@ -677,13 +686,13 @@ func logSubscriptionTest(t *TestEnv) {
 // address are updated correct.
 func balanceAndNonceAtTest(t *TestEnv) {
 	var (
-		sourceAddr  = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		sourceAddr  = t.Vault.createAccount(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 		sourceNonce = uint64(0)
-		targetAddr  = t.Vault.createAccount(t, nil)
+		targetAddr  = t.Vault.createAccount(t, t.L2Eth, nil, l2ChainID)
 	)
 
 	// Get current balance
-	sourceAddressBalanceBefore, err := t.Eth.BalanceAt(t.Ctx(), sourceAddr, nil)
+	sourceAddressBalanceBefore, err := t.L2Eth.BalanceAt(t.Ctx(), sourceAddr, nil)
 	if err != nil {
 		t.Fatalf("Unable to retrieve balance: %v", err)
 	}
@@ -693,7 +702,7 @@ func balanceAndNonceAtTest(t *TestEnv) {
 		t.Errorf("Expected balance %d, got %d", expected, sourceAddressBalanceBefore)
 	}
 
-	nonceBefore, err := t.Eth.NonceAt(t.Ctx(), sourceAddr, nil)
+	nonceBefore, err := t.L2Eth.NonceAt(t.Ctx(), sourceAddr, nil)
 	if err != nil {
 		t.Fatalf("Unable to determine nonce: %v", err)
 	}
@@ -707,20 +716,20 @@ func balanceAndNonceAtTest(t *TestEnv) {
 		gasLimit = uint64(50000)
 	)
 	rawTx := types.NewTransaction(sourceNonce, targetAddr, amount, gasLimit, gasPrice, nil)
-	valueTx, err := t.Vault.signTransaction(sourceAddr, rawTx)
+	valueTx, err := t.Vault.l2TransactionSigner(sourceAddr, rawTx)
 	if err != nil {
 		t.Fatalf("Unable to sign value tx: %v", err)
 	}
 	sourceNonce++
 
 	t.Logf("BalanceAt: send %d wei from 0x%x to 0x%x in 0x%x", valueTx.Value(), sourceAddr, targetAddr, valueTx.Hash())
-	if err := t.Eth.SendTransaction(t.Ctx(), valueTx); err != nil {
+	if err := t.L2Eth.SendTransaction(t.Ctx(), valueTx); err != nil {
 		t.Fatalf("Unable to send transaction: %v", err)
 	}
 
 	var receipt *types.Receipt
 	for {
-		receipt, err = t.Eth.TransactionReceipt(t.Ctx(), valueTx.Hash())
+		receipt, err = t.L2Eth.TransactionReceipt(t.Ctx(), valueTx.Hash())
 		if receipt != nil {
 			break
 		}
@@ -731,11 +740,11 @@ func balanceAndNonceAtTest(t *TestEnv) {
 	}
 
 	// ensure balances have been updated
-	accountBalanceAfter, err := t.Eth.BalanceAt(t.Ctx(), sourceAddr, nil)
+	accountBalanceAfter, err := t.L2Eth.BalanceAt(t.Ctx(), sourceAddr, nil)
 	if err != nil {
 		t.Fatalf("Unable to retrieve balance: %v", err)
 	}
-	balanceTargetAccountAfter, err := t.Eth.BalanceAt(t.Ctx(), targetAddr, nil)
+	balanceTargetAccountAfter, err := t.L2Eth.BalanceAt(t.Ctx(), targetAddr, nil)
 	if err != nil {
 		t.Fatalf("Unable to retrieve balance: %v", err)
 	}
@@ -753,7 +762,7 @@ func balanceAndNonceAtTest(t *TestEnv) {
 	}
 
 	// ensure nonce is incremented by 1
-	nonceAfter, err := t.Eth.NonceAt(t.Ctx(), sourceAddr, nil)
+	nonceAfter, err := t.L2Eth.NonceAt(t.Ctx(), sourceAddr, nil)
 	if err != nil {
 		t.Fatalf("Unable to determine nonce: %v", err)
 	}
@@ -793,26 +802,26 @@ func validatePredeployContractLogs(t *TestEnv, tx *types.Transaction, logs []typ
 
 func transactionCountTest(t *TestEnv) {
 	var (
-		key = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		key = t.Vault.createAccount(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 	)
 
 	for i := 0; i < 60; i++ {
 		rawTx := types.NewTransaction(uint64(i), predeployedVaultAddr, big1, 100000, gasPrice, nil)
-		tx, err := t.Vault.signTransaction(key, rawTx)
+		tx, err := t.Vault.l2TransactionSigner(key, rawTx)
 		if err != nil {
 			t.Fatalf("Unable to sign deploy tx: %v", err)
 		}
 
-		if err = t.Eth.SendTransaction(t.Ctx(), tx); err != nil {
+		if err = t.L2Eth.SendTransaction(t.Ctx(), tx); err != nil {
 			t.Fatalf("Unable to send transaction: %v", err)
 		}
-		block, err := t.Eth.BlockByNumber(t.Ctx(), nil)
+		block, err := t.L2Eth.BlockByNumber(t.Ctx(), nil)
 		if err != nil {
 			t.Fatalf("Unable to retrieve latest block: %v", err)
 		}
 
 		if len(block.Transactions()) > 0 {
-			count, err := t.Eth.TransactionCount(t.Ctx(), block.Hash())
+			count, err := t.L2Eth.TransactionCount(t.Ctx(), block.Hash())
 			if err != nil {
 				t.Fatalf("Unable to retrieve block transaction count: %v", err)
 			}
@@ -829,21 +838,21 @@ func transactionCountTest(t *TestEnv) {
 // TransactionReceiptTest sends a transaction and tests the receipt fields.
 func TransactionReceiptTest(t *TestEnv) {
 	var (
-		key = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		key = t.Vault.createAccount(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 	)
 
 	rawTx := types.NewTransaction(uint64(0), common.Address{}, big1, 100000, gasPrice, nil)
-	tx, err := t.Vault.signTransaction(key, rawTx)
+	tx, err := t.Vault.l2TransactionSigner(key, rawTx)
 	if err != nil {
 		t.Fatalf("Unable to sign deploy tx: %v", err)
 	}
 
-	if err = t.Eth.SendTransaction(t.Ctx(), tx); err != nil {
+	if err = t.L2Eth.SendTransaction(t.Ctx(), tx); err != nil {
 		t.Fatalf("Unable to send transaction: %v", err)
 	}
 
 	for i := 0; i < 60; i++ {
-		receipt, err := t.Eth.TransactionReceipt(t.Ctx(), tx.Hash())
+		receipt, err := t.L2Eth.TransactionReceipt(t.Ctx(), tx.Hash())
 		if err == ethereum.NotFound {
 			time.Sleep(time.Second)
 			continue
@@ -869,4 +878,185 @@ func TransactionReceiptTest(t *TestEnv) {
 		}
 		return
 	}
+}
+
+// calcGasFees determines the actual cost of the transaction given a specific basefee
+func calcGasFees(gasUsed uint64, gasTipCap *big.Int, gasFeeCap *big.Int, baseFee *big.Int) *big.Int {
+	x := new(big.Int).Add(gasTipCap, baseFee)
+	// If tip + basefee > gas fee cap, clamp it to the gas fee cap
+	if x.Cmp(gasFeeCap) > 0 {
+		x = gasFeeCap
+	}
+	return x.Mul(x, new(big.Int).SetUint64(gasUsed))
+}
+
+// withdrawalTest checks that a deposit and then withdrawal execution succeeds.
+// It verifies the balance changes on L1 and L2 and has to include gas fees in
+// the balance checks. It does not check that the withdrawal can be executed
+// prior to the end of the finality period.
+func withdrawalTest(t *TestEnv) {
+	var (
+		fromAddr = t.Vault.createAccount(t, t.L1Eth, big.NewInt(params.Ether*2), l1ChainID)
+	)
+
+	// Find deposit contract
+	depositContract, err := bindings.NewOptimismPortal(t.depositContractAddr, t.L1Eth)
+	if err != nil {
+		t.Fatalf("Unable to create deposit contract: %v", err)
+	}
+
+	opts, err := bind.NewKeyedTransactorWithChainID(t.Vault.findKey(fromAddr), l1ChainID)
+	if err != nil {
+		t.Fatalf("Unable to create signer: %v", err)
+	}
+
+	// Start L2 balance
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	startBalance, err := t.L2Eth.BalanceAt(ctx, fromAddr, nil)
+	require.Nil(t, err)
+
+	//// Finally send TX
+	mintAmount := big.NewInt(1_000_000_000_000_000_000)
+	opts.Value = mintAmount
+	tx, err := depositContract.DepositTransaction(opts, fromAddr, common.Big0, 1_000_000, false, nil)
+	if err != nil {
+		t.Fatalf("Could not sign deposit transaction: %v", err)
+	}
+
+	receipt, err := waitForTransaction(tx.Hash(), t.L1Eth, 3*l1BlockTime)
+	if err != nil {
+		t.Fatalf("Could not confirm deposit transaction %v: %v", tx.Hash(), err)
+	}
+
+	// Bind L2 Withdrawer Contract
+	l2withdrawer, err := bindings.NewL2ToL1MessagePasser(t.withdrawalContractAddr, t.L2Eth)
+	require.Nil(t, err, "binding withdrawer on L2")
+
+	// Wait for deposit to arrive
+	reconstructedDep, err := derive.UnmarshalLogEvent(receipt.Logs[0])
+	if err != nil {
+		t.Fatalf("Could not reconstruct L2 Deposit: %v", err)
+	}
+	tx = types.NewTx(reconstructedDep)
+	receipt, err = waitForTransaction(tx.Hash(), t.L2Eth, 3*l1BlockTime)
+	require.NoError(t, err)
+	require.Equal(t, receipt.Status, types.ReceiptStatusSuccessful)
+
+	// Confirm L2 balance
+	endBalance, err := t.L2Eth.BalanceAt(t.Ctx(), fromAddr, nil)
+	require.Nil(t, err)
+
+	diff := new(big.Int)
+	diff = diff.Sub(endBalance, startBalance)
+	require.Equal(t, mintAmount, diff, "Did not get expected balance change after mint")
+
+	// Start L2 balance for withdrawal
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	startBalance, err = t.L2Eth.BalanceAt(ctx, fromAddr, nil)
+	require.Nil(t, err)
+
+	// Intiate Withdrawal
+	withdrawAmount := big.NewInt(500_000_000_000)
+	l2opts, err := bind.NewKeyedTransactorWithChainID(t.Vault.findKey(fromAddr), l2ChainID)
+	require.Nil(t, err)
+	l2opts.Value = withdrawAmount
+	tx, err = l2withdrawer.InitiateWithdrawal(l2opts, fromAddr, big.NewInt(21000), nil)
+	require.Nil(t, err, "sending initiate withdraw tx")
+
+	receipt, err = waitForTransaction(tx.Hash(), t.L2Eth, 3*l1BlockTime)
+	require.Nil(t, err, "withdrawal initiated on L2 sequencer")
+	require.Equal(t, receipt.Status, types.ReceiptStatusSuccessful, "transaction failed")
+
+	// Verify L2 balance after withdrawal
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	header, err := t.L2Eth.HeaderByNumber(ctx, receipt.BlockNumber)
+	require.Nil(t, err)
+
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	endBalance, err = t.L2Eth.BalanceAt(ctx, fromAddr, nil)
+	require.Nil(t, err)
+
+	// Take fee into account
+	diff = new(big.Int).Sub(startBalance, endBalance)
+	fees := calcGasFees(receipt.GasUsed, tx.GasTipCap(), tx.GasFeeCap(), header.BaseFee)
+	diff = diff.Sub(diff, fees)
+	require.Equal(t, withdrawAmount, diff)
+
+	// Take start balance on L1
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	startBalance, err = t.L1Eth.BalanceAt(ctx, fromAddr, nil)
+	require.Nil(t, err)
+
+	// Wait for finalization and then create the Finalized Withdrawal Transaction
+	l2OutputOracle, err := bindings.NewL2OutputOracleCaller(t.l2OOContractAddr, t.L1Eth)
+	require.Nil(t, err)
+
+	ctx, cancel = context.WithTimeout(context.Background(), 10*l1BlockTime)
+	defer cancel()
+	timestamp, err := withdrawals.WaitForFinalizationPeriod(ctx, t.L1Eth, t.depositContractAddr, header.Time)
+	require.Nil(t, err)
+
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	blockNumber, err := l2OutputOracle.ComputeL2BlockNumber(&bind.CallOpts{Context: ctx}, new(big.Int).SetUint64(timestamp))
+	require.Nil(t, err)
+
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	header, err = t.L2Eth.HeaderByNumber(ctx, blockNumber)
+	require.Nil(t, err)
+
+	rpc, err := rpc.Dial("ws://172.17.0.4:9546")
+	require.Nil(t, err)
+	l2client := withdrawals.NewClient(rpc)
+
+	// Now create withdrawal
+	params, err := withdrawals.FinalizeWithdrawalParameters(context.Background(), l2client, tx.Hash(), header)
+	require.Nil(t, err)
+
+	portal, err := bindings.NewOptimismPortal(t.depositContractAddr, t.L1Eth)
+	require.Nil(t, err)
+
+	opts.Value = nil
+	tx, err = portal.FinalizeWithdrawalTransaction(
+		opts,
+		params.Nonce,
+		params.Sender,
+		params.Target,
+		params.Value,
+		params.GasLimit,
+		params.Data,
+		params.Timestamp,
+		params.OutputRootProof,
+		params.WithdrawalProof,
+	)
+
+	require.Nil(t, err)
+
+	receipt, err = waitForTransaction(tx.Hash(), t.L1Eth, 3*l1BlockTime)
+	require.Nil(t, err, "finalize withdrawal")
+	require.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
+
+	// Verify balance after withdrawal
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	header, err = t.L1Eth.HeaderByNumber(ctx, receipt.BlockNumber)
+	require.Nil(t, err)
+
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	endBalance, err = t.L1Eth.BalanceAt(ctx, fromAddr, nil)
+	require.Nil(t, err)
+
+	// Ensure that withdrawal - gas fees are added to the L1 balance
+	// Fun fact, the fee is greater than the withdrawal amount
+	diff = new(big.Int).Sub(endBalance, startBalance)
+	fees = calcGasFees(receipt.GasUsed, tx.GasTipCap(), tx.GasFeeCap(), header.BaseFee)
+	withdrawAmount = withdrawAmount.Sub(withdrawAmount, fees)
+	require.Equal(t, withdrawAmount, diff)
 }

@@ -22,7 +22,7 @@ import (
 // callContractTest uses the generated ABI binding to call methods in the
 // pre-deployed contract.
 func callContractTest(t *TestEnv) {
-	contract, err := testcontract.NewContractCaller(predeployedContractAddr, t.Eth)
+	contract, err := testcontract.NewContractCaller(predeployedContractAddr, t.L2Eth)
 	if err != nil {
 		t.Fatalf("Unable to instantiate contract caller: %v", err)
 	}
@@ -68,7 +68,7 @@ func callContractTest(t *TestEnv) {
 // waits for logs.
 func transactContractTest(t *TestEnv) {
 	var (
-		address = t.Vault.createAccount(t, big.NewInt(params.Ether))
+		address = t.Vault.createAccount(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 		nonce   = uint64(0)
 
 		expectedContractAddress = crypto.CreateAddress(address, nonce)
@@ -81,14 +81,14 @@ func transactContractTest(t *TestEnv) {
 	)
 
 	rawTx := types.NewContractCreation(nonce, big0, gasLimit, gasPrice, deployCode)
-	deployTx, err := t.Vault.signTransaction(address, rawTx)
+	deployTx, err := t.Vault.signTransaction(address, rawTx, l2ChainID)
 	nonce++
 	if err != nil {
 		t.Fatalf("Unable to sign deploy tx: %v", err)
 	}
 
 	// deploy contract
-	if err := t.Eth.SendTransaction(t.Ctx(), deployTx); err != nil {
+	if err := t.L2Eth.SendTransaction(t.Ctx(), deployTx); err != nil {
 		t.Fatalf("Unable to send transaction: %v", err)
 	}
 
@@ -115,12 +115,12 @@ func transactContractTest(t *TestEnv) {
 	}
 
 	eventsTx := types.NewTransaction(nonce, predeployedContractAddr, big0, 500000, gasPrice, payload)
-	tx, err := t.Vault.signTransaction(address, eventsTx)
+	tx, err := t.Vault.signTransaction(address, eventsTx, l2ChainID)
 	nonce++
 	if err != nil {
 		t.Fatalf("Unable to sign deploy tx: %v", err)
 	}
-	if err := t.Eth.SendTransaction(t.Ctx(), tx); err != nil {
+	if err := t.L2Eth.SendTransaction(t.Ctx(), tx); err != nil {
 		t.Fatalf("Unable to send transaction: %v", err)
 	}
 
@@ -153,7 +153,7 @@ func transactContractTest(t *TestEnv) {
 // waits for logs. It uses subscription to track logs.
 func transactContractSubscriptionTest(t *TestEnv) {
 	var (
-		address = t.Vault.createAccountWithSubscription(t, big.NewInt(params.Ether))
+		address = t.Vault.createAccountWithSubscription(t, t.L2Eth, big.NewInt(params.Ether), l2ChainID)
 		nonce   = uint64(0)
 
 		expectedContractAddress = crypto.CreateAddress(address, nonce)
@@ -169,14 +169,14 @@ func transactContractSubscriptionTest(t *TestEnv) {
 
 	// deploy contract
 	rawTx := types.NewContractCreation(nonce, big0, gasLimit, gasPrice, deployCode)
-	deployTx, err := t.Vault.signTransaction(address, rawTx)
+	deployTx, err := t.Vault.signTransaction(address, rawTx, l2ChainID)
 	nonce++
 	if err != nil {
 		t.Fatalf("Unable to sign deploy tx: %v", err)
 	}
 
 	ctx, _ := context.WithTimeout(context.Background(), rpcTimeout)
-	if err := t.Eth.SendTransaction(ctx, deployTx); err != nil {
+	if err := t.L2Eth.SendTransaction(ctx, deployTx); err != nil {
 		t.Fatalf("Unable to send transaction: %v", err)
 	}
 
@@ -198,7 +198,7 @@ func transactContractSubscriptionTest(t *TestEnv) {
 	// setup log subscription
 	ctx, _ = context.WithTimeout(context.Background(), rpcTimeout)
 	q := ethereum.FilterQuery{Addresses: []common.Address{receipt.ContractAddress}}
-	sub, err := t.Eth.SubscribeFilterLogs(ctx, q, logs)
+	sub, err := t.L2Eth.SubscribeFilterLogs(ctx, q, logs)
 	if err != nil {
 		t.Fatalf("Unable to create log subscription: %v", err)
 	}
@@ -208,7 +208,7 @@ func transactContractSubscriptionTest(t *TestEnv) {
 
 	defer sub.Unsubscribe()
 
-	contract, err := testcontract.NewContractTransactor(receipt.ContractAddress, t.Eth)
+	contract, err := testcontract.NewContractTransactor(receipt.ContractAddress, t.L2Eth)
 	if err != nil {
 		t.Fatalf("Could not instantiate contract instance: %v", err)
 	}
@@ -217,7 +217,7 @@ func transactContractSubscriptionTest(t *TestEnv) {
 	opts := &bind.TransactOpts{
 		From:   address,
 		Nonce:  new(big.Int).SetUint64(nonce),
-		Signer: t.Vault.signTransaction,
+		Signer: t.Vault.l2TransactionSigner,
 	}
 	tx, err := contract.Events(opts, intArg, addrArg)
 	if err != nil {

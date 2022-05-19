@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -26,10 +27,14 @@ var rpcTimeout = 10 * time.Second
 type TestEnv struct {
 	*hivesim.T
 	RPC   *rpc.Client
-	Eth   *ethclient.Client
+	L1Eth *ethclient.Client
+	L2Eth *ethclient.Client
 	Vault *vault
 
-	genesis []byte
+	genesis                []byte
+	depositContractAddr    common.Address
+	withdrawalContractAddr common.Address
+	l2OOContractAddr       common.Address
 
 	// This holds most recent context created by the Ctx method.
 	// Every time Ctx is called, it creates a new context with the default
@@ -48,14 +53,23 @@ func runHTTP(t *hivesim.T, c *hivesim.Client, v *vault, g []byte, fn func(*TestE
 		},
 	}
 
-	rpcClient, _ := rpc.DialHTTPWithClient(fmt.Sprintf("http://%v:9545/", c.IP), client)
-	defer rpcClient.Close()
+	l1RpcClient, _ := rpc.DialHTTPWithClient(fmt.Sprintf("http://%v:8545/", "172.17.0.3"), client)
+	defer l1RpcClient.Close()
+
+	// FIXME: hardcoded IP
+	l2RpcClient, _ := rpc.DialHTTPWithClient(fmt.Sprintf("http://%v:9545/", c.IP), client)
+	defer l2RpcClient.Close()
+
 	env := &TestEnv{
-		T:     t,
-		RPC:   rpcClient,
-		Eth:   ethclient.NewClient(rpcClient),
-		Vault: v,
-		genesis: g,
+		T:                      t,
+		RPC:                    l1RpcClient,
+		L1Eth:                  ethclient.NewClient(l1RpcClient),
+		L2Eth:                  ethclient.NewClient(l2RpcClient),
+		Vault:                  v,
+		genesis:                g,
+		depositContractAddr:    common.HexToAddress("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"),
+		withdrawalContractAddr: common.HexToAddress("0x4200000000000000000000000000000000000016"),
+		l2OOContractAddr:       common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3"),
 	}
 	fn(env)
 	if env.lastCtx != nil {
@@ -66,19 +80,32 @@ func runHTTP(t *hivesim.T, c *hivesim.Client, v *vault, g []byte, fn func(*TestE
 // runWS runs the given test function using the WebSocket RPC client.
 func runWS(t *hivesim.T, c *hivesim.Client, v *vault, g []byte, fn func(*TestEnv)) {
 	ctx, done := context.WithTimeout(context.Background(), 5*time.Second)
-	rpcClient, err := rpc.DialWebsocket(ctx, fmt.Sprintf("ws://%v:9546/", c.IP), "")
+	l1RpcClient, err := rpc.DialWebsocket(ctx, fmt.Sprintf("ws://%v:8546/", "172.17.0.3"), "")
 	done()
 	if err != nil {
 		t.Fatal("WebSocket connection failed:", err)
 	}
-	defer rpcClient.Close()
+	defer l1RpcClient.Close()
+
+	// FIXME: hardcoded IP
+	ctx, done = context.WithTimeout(context.Background(), 5*time.Second)
+	l2RpcClient, err := rpc.DialWebsocket(ctx, fmt.Sprintf("ws://%v:9546/", c.IP), "")
+	done()
+	if err != nil {
+		t.Fatal("WebSocket connection failed:", err)
+	}
+	defer l2RpcClient.Close()
 
 	env := &TestEnv{
-		T:     t,
-		RPC:   rpcClient,
-		Eth:   ethclient.NewClient(rpcClient),
-		Vault: v,
-		genesis: g,
+		T:                      t,
+		RPC:                    l1RpcClient,
+		L1Eth:                  ethclient.NewClient(l1RpcClient),
+		L2Eth:                  ethclient.NewClient(l2RpcClient),
+		Vault:                  v,
+		genesis:                g,
+		depositContractAddr:    common.HexToAddress("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"),
+		withdrawalContractAddr: common.HexToAddress("0x4200000000000000000000000000000000000016"),
+		l2OOContractAddr:       common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3"),
 	}
 	fn(env)
 	if env.lastCtx != nil {
@@ -152,7 +179,7 @@ func waitForTxConfirmations(t *TestEnv, txHash common.Hash, n uint64) (*types.Re
 	)
 
 	for i := 0; i < 90; i++ {
-		receipt, err = t.Eth.TransactionReceipt(t.Ctx(), txHash)
+		receipt, err = t.L2Eth.TransactionReceipt(t.Ctx(), txHash)
 		if err != nil && err != ethereum.NotFound {
 			return nil, err
 		}
@@ -165,18 +192,18 @@ func waitForTxConfirmations(t *TestEnv, txHash common.Hash, n uint64) (*types.Re
 		return nil, ethereum.NotFound
 	}
 
-	if startBlock, err = t.Eth.BlockByNumber(t.Ctx(), nil); err != nil {
+	if startBlock, err = t.L2Eth.BlockByNumber(t.Ctx(), nil); err != nil {
 		return nil, err
 	}
 
 	for i := 0; i < 90; i++ {
-		currentBlock, err := t.Eth.BlockByNumber(t.Ctx(), nil)
+		currentBlock, err := t.L2Eth.BlockByNumber(t.Ctx(), nil)
 		if err != nil {
 			return nil, err
 		}
 
 		if startBlock.NumberU64()+n >= currentBlock.NumberU64() {
-			if checkReceipt, err := t.Eth.TransactionReceipt(t.Ctx(), txHash); checkReceipt != nil {
+			if checkReceipt, err := t.L2Eth.TransactionReceipt(t.Ctx(), txHash); checkReceipt != nil {
 				if bytes.Compare(receipt.PostState, checkReceipt.PostState) == 0 {
 					return receipt, nil
 				} else { // chain reorg
@@ -191,6 +218,26 @@ func waitForTxConfirmations(t *TestEnv, txHash common.Hash, n uint64) (*types.Re
 	}
 
 	return nil, ethereum.NotFound
+}
+
+func waitForTransaction(hash common.Hash, client *ethclient.Client, timeout time.Duration) (*types.Receipt, error) {
+	timeoutCh := time.After(timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	for {
+		receipt, err := client.TransactionReceipt(ctx, hash)
+		if receipt != nil && err == nil {
+			return receipt, nil
+		} else if err != nil && !errors.Is(err, ethereum.NotFound) {
+			return nil, err
+		}
+
+		select {
+		case <-timeoutCh:
+			return nil, errors.New("timeout")
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
 }
 
 // loggingRoundTrip writes requests and responses to the test log.

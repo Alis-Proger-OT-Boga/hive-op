@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 var (
@@ -65,9 +66,31 @@ func (v *vault) findKey(addr common.Address) *ecdsa.PrivateKey {
 	return v.accounts[addr]
 }
 
+// l1TransactionSigner signs the given transaction with the test account and returns it.
+// It uses the EIP155 signing rules.
+func (v *vault) l1TransactionSigner(sender common.Address, tx *types.Transaction) (*types.Transaction, error) {
+	key := v.findKey(sender)
+	if key == nil {
+		return nil, fmt.Errorf("sender account %v not in vault", sender)
+	}
+	signer := types.LatestSignerForChainID(l1ChainID)
+	return types.SignTx(tx, signer, key)
+}
+
+// l2TransactionSigner signs the given transaction with the test account and returns it.
+// It uses the EIP155 signing rules.
+func (v *vault) l2TransactionSigner(sender common.Address, tx *types.Transaction) (*types.Transaction, error) {
+	key := v.findKey(sender)
+	if key == nil {
+		return nil, fmt.Errorf("sender account %v not in vault", sender)
+	}
+	signer := types.LatestSignerForChainID(l2ChainID)
+	return types.SignTx(tx, signer, key)
+}
+
 // signTransaction signs the given transaction with the test account and returns it.
 // It uses the EIP155 signing rules.
-func (v *vault) signTransaction(sender common.Address, tx *types.Transaction) (*types.Transaction, error) {
+func (v *vault) signTransaction(sender common.Address, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
 	key := v.findKey(sender)
 	if key == nil {
 		return nil, fmt.Errorf("sender account %v not in vault", sender)
@@ -78,7 +101,7 @@ func (v *vault) signTransaction(sender common.Address, tx *types.Transaction) (*
 
 // createAndFundAccount creates a new account that is funded from the vault contract.
 // It will panic when the account could not be created and funded.
-func (v *vault) createAccountWithSubscription(t *TestEnv, amount *big.Int) common.Address {
+func (v *vault) createAccountWithSubscription(t *TestEnv, client *ethclient.Client, amount *big.Int, chainID *big.Int) common.Address {
 	if amount == nil {
 		amount = new(big.Int)
 	}
@@ -95,15 +118,15 @@ func (v *vault) createAccountWithSubscription(t *TestEnv, amount *big.Int) commo
 	defer cancel()
 
 	// listen for new heads
-	headsSub, err := t.Eth.SubscribeNewHead(ctx, heads)
+	headsSub, err := t.L2Eth.SubscribeNewHead(ctx, heads)
 	if err != nil {
 		t.Fatal("could not create new head subscription:", err)
 	}
 	defer headsSub.Unsubscribe()
 
 	// order the vault to send some ether
-	tx := v.makeFundingTx(t, address, amount)
-	if err := t.Eth.SendTransaction(ctx, tx); err != nil {
+	tx := v.makeFundingTx(t, address, amount, chainID)
+	if err := t.L2Eth.SendTransaction(ctx, tx); err != nil {
 		t.Fatalf("unable to send funding transaction: %v", err)
 	}
 
@@ -137,19 +160,19 @@ func (v *vault) createAccountWithSubscription(t *TestEnv, amount *big.Int) commo
 
 // createAccount creates a new account that is funded from the vault contract.
 // It will panic when the account could not be created and funded.
-func (v *vault) createAccount(t *TestEnv, amount *big.Int) common.Address {
+func (v *vault) createAccount(t *TestEnv, client *ethclient.Client, amount *big.Int, chainID *big.Int) common.Address {
 	if amount == nil {
 		amount = new(big.Int)
 	}
 	address := v.generateKey()
 
 	// order the vault to send some ether
-	tx := v.makeFundingTx(t, address, amount)
-	if err := t.Eth.SendTransaction(t.Ctx(), tx); err != nil {
+	tx := v.makeFundingTx(t, address, amount, chainID)
+	if err := client.SendTransaction(t.Ctx(), tx); err != nil {
 		t.Fatalf("unable to send funding transaction: %v", err)
 	}
 
-	txBlock, err := t.Eth.BlockNumber(t.Ctx())
+	txBlock, err := client.BlockNumber(t.Ctx())
 	if err != nil {
 		t.Fatalf("can't get block number:", err)
 	}
@@ -157,13 +180,13 @@ func (v *vault) createAccount(t *TestEnv, amount *big.Int) common.Address {
 	// wait for vaultTxConfirmationCount confirmation by checking the balance vaultTxConfirmationCount blocks back.
 	// createAndFundAccountWithSubscription for a better solution using logs
 	for i := uint64(0); i < vaultTxConfirmationCount*20; i++ {
-		number, err := t.Eth.BlockNumber(t.Ctx())
+		number, err := client.BlockNumber(t.Ctx())
 		if err != nil {
 			t.Fatalf("can't get block number:", err)
 		}
 		if number > txBlock+vaultTxConfirmationCount {
 			checkBlock := number - vaultTxConfirmationCount
-			balance, err := t.Eth.BalanceAt(t.Ctx(), address, new(big.Int).SetUint64(checkBlock))
+			balance, err := client.BalanceAt(t.Ctx(), address, new(big.Int).SetUint64(checkBlock))
 			if err != nil {
 				panic(err)
 			}
@@ -176,7 +199,7 @@ func (v *vault) createAccount(t *TestEnv, amount *big.Int) common.Address {
 	panic(fmt.Sprintf("could not fund account %v in transaction %v", address, tx.Hash()))
 }
 
-func (v *vault) makeFundingTx(t *TestEnv, recipient common.Address, amount *big.Int) *types.Transaction {
+func (v *vault) makeFundingTx(t *TestEnv, recipient common.Address, amount *big.Int, chainID *big.Int) *types.Transaction {
 	var (
 		nonce    = v.nextNonce()
 		gasLimit = uint64(75000)
