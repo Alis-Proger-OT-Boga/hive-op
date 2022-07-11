@@ -62,7 +62,8 @@ func runReorgTests(t *hivesim.T) {
 		},
 	}
 
-	rpcClient, _ := rpc.DialHTTPWithClient(fmt.Sprintf("http://%v:8545/", d.eth1.IP), client)
+	fmt.Println(d.eth1.IP)
+	rpcClient, _ := rpc.DialHTTPWithClient("http://172.17.0.3:8545/", client)
 	defer rpcClient.Close()
 	l1Client := ethclient.NewClient(rpcClient)
 	l1GethClient := gethclient.New(rpcClient)
@@ -73,7 +74,7 @@ func runReorgTests(t *hivesim.T) {
 	l1Header, err := l1Client.HeaderByNumber(ctx, nil)
 	require.Nil(t, err)
 
-	fmt.Println("before sethead: %d", l1Header.Number)
+	fmt.Printf("before sethead: %d\n", l1Header.Number)
 
 	l1GethClient.SetHead(ctx, l1Header.Number)
 
@@ -82,5 +83,5 @@ func runReorgTests(t *hivesim.T) {
 	l1Header, err = l1Client.HeaderByNumber(ctx, nil)
 	require.Nil(t, err)
 
-	fmt.Println("after sethead: %d", l1Header.Number)
+	fmt.Printf("after sethead: %d\n", l1Header.Number)
 }
