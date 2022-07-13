@@ -62,7 +62,6 @@ func runReorgTests(t *hivesim.T) {
 		},
 	}
 
-	fmt.Println(d.eth1.IP)
 	rpcClient, _ := rpc.DialHTTPWithClient("http://172.17.0.3:8545/", client)
 	defer rpcClient.Close()
 	l1Client := ethclient.NewClient(rpcClient)
@@ -76,9 +75,15 @@ func runReorgTests(t *hivesim.T) {
 
 	fmt.Printf("before sethead: %d\n", l1Header.Number)
 
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
 	l1GethClient.SetHead(ctx, l1Header.Number)
 
 	time.Sleep(10 * l1BlockTime)
+
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 
 	l1Header, err = l1Client.HeaderByNumber(ctx, nil)
 	require.Nil(t, err)
