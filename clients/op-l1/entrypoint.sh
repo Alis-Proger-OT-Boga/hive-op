@@ -3,7 +3,10 @@ set -exu
 
 # Regenerate the L1 genesis file
 date +%s | xargs printf "0x%x" > /hive/genesis_timestamp
-GENESIS_TIMESTAMP=$(cat /hive/genesis_timestamp); jq ". | .timestamp = \"$GENESIS_TIMESTAMP\" " < ./genesis.json > /hive/genesis-l1.json
+GENESIS_TIMESTAMP=$(cat /hive/genesis_timestamp)
+# jq ". | .timestamp = \"$GENESIS_TIMESTAMP\" " < ./genesis.json > /hive/genesis-l1.json
+cd /hive/optimism/packages/contracts-bedrock
+L2OO_STARTING_BLOCK_TIMESTAMP=$GENESIS_TIMESTAMP npx hardhat genesis-l1 --outfile /hive/genesis-l1.json
 
 VERBOSITY=${GETH_VERBOSITY:-3}
 GETH_DATA_DIR=/db

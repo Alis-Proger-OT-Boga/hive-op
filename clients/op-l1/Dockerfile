@@ -33,6 +33,11 @@ RUN chmod +x /hive-bin/deploy.sh
 ADD cat.sh /hive-bin/cat.sh
 RUN chmod +x /hive-bin/cat.sh
 
+# Deps
+RUN yarn global add npx -W
+RUN cd /hive/optimism && yarn && yarn build
+RUN cd /hive/optimism/packages/contracts-bedrock && yarn && yarn build
+
 VOLUME ["/db"]
 
 EXPOSE 8545/tcp

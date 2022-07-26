@@ -14,19 +14,8 @@ L2_STANDARD_BRIDGE_BYTECODE=$(get_deployed_bytecode /L2StandardBridge.json)
 
 GENESIS_TIMESTAMP=$(cat /genesis_timestamp)
 
-## Replace values in the L2 genesis file.
-## NOTE: these files are injected from devnet; see devnet.go
-jq ". | .alloc.\"4200000000000000000000000000000000000015\".code = \"$L1_BLOCK_INFO_BYTECODE\"" < /genesis.json | \
-  jq ". | .alloc.\"4200000000000000000000000000000000000015\".balance = \"0x0\"" | \
-  jq ". | .alloc.\"4200000000000000000000000000000000000016\".code = \"$L2_TO_L1_MESSAGE_PASSER_BYTECODE\"" | \
-  jq ". | .alloc.\"4200000000000000000000000000000000000016\".balance = \"0x0\"" | \
-  jq ". | .alloc.\"4200000000000000000000000000000000000007\".code = \"$L2_CROSS_DOMAIN_MESSENGER_BYTECODE\"" | \
-  jq ". | .alloc.\"4200000000000000000000000000000000000007\".balance = \"0x0\"" | \
-  jq ". | .alloc.\"4200000000000000000000000000000000000012\".code = \"$OPTIMISM_MINTABLE_TOKEN_FACTORY_BYTECODE\"" | \
-  jq ". | .alloc.\"4200000000000000000000000000000000000012\".balance = \"0x0\"" | \
-  jq ". | .alloc.\"4200000000000000000000000000000000000010\".code = \"$L2_STANDARD_BRIDGE_BYTECODE\"" | \
-  jq ". | .alloc.\"4200000000000000000000000000000000000010\".balance = \"0x0\"" | \
-  jq ". | .timestamp = \"$GENESIS_TIMESTAMP\" " > /hive/genesis-l2.json
+cd /hive/optimism/packages/contracts-bedrock
+L2OO_STARTING_BLOCK_TIMESTAMP=$GENESIS_TIMESTAMP npx hardhat genesis-l2 --outfile /hive/genesis-l2.json
 
 VERBOSITY=${GETH_VERBOSITY:-3}
 GETH_DATA_DIR=/db
