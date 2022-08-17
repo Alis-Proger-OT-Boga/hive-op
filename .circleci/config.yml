@@ -33,7 +33,7 @@ jobs:
       - run:
           command: |
             /tmp/build/hive \
-            -sim='optimism/*' \
+            -sim=optimism \
             -sim.loglevel=5 \
             -docker.pull=true \
             -client=go-ethereum,op-geth_optimism-history,op-proposer_develop,op-batcher_develop,op-node_develop,op-contracts_develop |& tee /tmp/build/hive.log
