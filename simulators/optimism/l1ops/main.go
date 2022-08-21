@@ -30,11 +30,11 @@ Tests deposits, withdrawals, and other L1-related operations against a running n
 `[1:],
 	}
 
-	suite.Add(&hivesim.TestSpec{
-		Name:        "deposits",
-		Description: "Tests deposits.",
-		Run:         runAllTests(depositTests),
-	})
+	//suite.Add(&hivesim.TestSpec{
+	//	Name:        "deposits",
+	//	Description: "Tests deposits.",
+	//	Run:         runAllTests(depositTests),
+	//})
 	suite.Add(&hivesim.TestSpec{
 		Name:        "withdrawals",
 		Description: "Tests withdrawals.",
