@@ -162,7 +162,7 @@ func (d *Devnet) InitHardhatDeployConfig(l1StartingBlockTag string, maxSeqDrift 
 	d.T.Log("created hardhat deploy config")
 }
 
-// InitRollupHardhat creates a deploy-config and the initial L1 configuration using a hardhat task.
+// InitL1Hardhat creates a deploy-config and the initial L1 configuration using a hardhat task.
 // After the L1 chain is running DeployL1Hardhat will need to run to deploy the L1 contracts.
 // This depends on InitContracts()
 func (d *Devnet) InitL1Hardhat() {

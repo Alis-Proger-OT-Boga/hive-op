@@ -13,6 +13,6 @@ export PRIVATE_KEY_DEPLOYER="$2"
 export CHAIN_ID="$3"
 
 # redirect standard output to stderr, we output the result as json to stdout later
-npx hardhat --network hivenet genesis-l2 --l1-rpc-url "$L1_RPC" --outfile genesis-l2.json 1>&2
+op-node genesis devnet-l2 --network hivenet --artifacts ./artifacts --deployments ./deployments --rpc-url "$L1_RPC" --outfile genesis-l2.json 1>&2
 
 cat genesis-l2.json
