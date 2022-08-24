@@ -2,6 +2,7 @@ package optimism
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -157,6 +158,8 @@ func (d *Devnet) InitHardhatDeployConfig(l1StartingBlockTag string, maxSeqDrift 
 		d.T.Fatalf("failed to marshal hardhat deploy config: %v", err)
 		return
 	}
+
+	fmt.Println(string(deployConfBytes))
 
 	_ = d.RunScript("deploy config", "deploy_config.sh", string(deployConfBytes))
 	d.T.Log("created hardhat deploy config")
