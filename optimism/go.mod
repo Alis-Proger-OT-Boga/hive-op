@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/ethereum-optimism/optimism/op-batcher v0.6.0
 	github.com/ethereum-optimism/optimism/op-bindings v0.6.1-0.20220903075713-114b9637733f
+	github.com/ethereum-optimism/optimism/op-chain-ops v0.0.0-20220903071155-79a8f6caa0d2
 	github.com/ethereum-optimism/optimism/op-node v0.6.0
 	github.com/ethereum-optimism/optimism/op-proposer v0.6.0
 	github.com/ethereum/go-ethereum v1.10.21
@@ -16,7 +17,6 @@ require (
 
 require (
 	github.com/VictoriaMetrics/fastcache v1.10.0 // indirect
-	github.com/aristanetworks/goarista v0.0.0-20170210015632-ea17b1a17847 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.22.1 // indirect
@@ -32,9 +32,8 @@ require (
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
+	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/elastic/gosigar v0.14.2 // indirect
-	github.com/ethereum-optimism/optimism/l2geth v0.0.0-20220820030939-de38b6f6f77e // indirect
-	github.com/ethereum-optimism/optimism/op-chain-ops v0.0.0-20220903071155-79a8f6caa0d2 // indirect
 	github.com/ethereum-optimism/optimism/op-service v0.5.0 // indirect
 	github.com/fjl/memsize v0.0.1 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
@@ -123,8 +122,6 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	github.com/steakknife/bloomfilter v0.0.0-20180922174646-6819c0d2a570 // indirect
-	github.com/steakknife/hamming v0.0.0-20180906055917-c99c65617cd3 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect
