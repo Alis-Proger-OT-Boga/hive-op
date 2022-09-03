@@ -6,6 +6,7 @@ RUN apk add --no-cache python3 bash
 
 RUN echo $branch > /version.txt
 
+COPY --from=artifacts /artifacts /artifacts
 COPY ./entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
