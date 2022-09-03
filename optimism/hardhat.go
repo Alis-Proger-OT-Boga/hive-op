@@ -102,17 +102,10 @@ func (d *Devnet) InitHardhatDeployConfig(l1StartingBlockTag string, maxSeqDrift 
 	defer d.mu.Unlock()
 	d.T.Log("creating hardhat deploy config")
 
-	tag, err := blockTagToRPC(l1StartingBlockTag)
-	if err != nil {
-		d.T.Fatalf("failed to parse l1 starting block tag: %v", err)
-		return
-	}
-
 	deployConf := genesis.DeployConfig{
-		L1StartingBlockTag: tag,
-		L1ChainID:          uint64(L1ChainID),
-		L2ChainID:          uint64(L2ChainID),
-		L2BlockTime:        2,
+		L1ChainID:   uint64(L1ChainID),
+		L2ChainID:   uint64(L2ChainID),
+		L2BlockTime: 2,
 
 		MaxSequencerDrift:      maxSeqDrift,
 		SequencerWindowSize:    seqWindowSize,
