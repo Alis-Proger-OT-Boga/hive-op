@@ -2,12 +2,17 @@ package optimism
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/ethereum-optimism/optimism/op-bindings/predeploys"
+	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/hive/hivesim"
 	"math/big"
+	"time"
 )
 
 var (
@@ -27,7 +32,7 @@ type HardhatDeployConfig struct {
 	MaxSequencerDrift      uint64         `json:"maxSequencerDrift"`
 	SequencerWindowSize    uint64         `json:"sequencerWindowSize"`
 	ChannelTimeout         uint64         `json:"channelTimeout"`
-	P2pSequencerAddress    common.Address `json:"p2pSequencerAddress"`
+	P2PSequencerAddress    common.Address `json:"p2pSequencerAddress"`
 	OptimismL2FeeRecipient common.Address `json:"optimismL2FeeRecipient"`
 	BatchInboxAddress      common.Address `json:"batchInboxAddress"`
 	BatchSenderAddress     common.Address `json:"batchSenderAddress"`
@@ -70,7 +75,7 @@ type HardhatDeployConfig struct {
 
 	ProxyAdmin                  common.Address `json:"proxyAdmin"`
 	FundDevAccounts             bool           `json:"fundDevAccounts"`
-	DeploymentWaitConfirmations uint64         `json:"deploymentWaitConfirmations"`
+	DeploymentWaitConfirmations int            `json:"deploymentWaitConfirmations"`
 }
 
 func (d *Devnet) RunScript(name string, command ...string) *hivesim.ExecInfo {
@@ -97,8 +102,14 @@ func (d *Devnet) InitHardhatDeployConfig(l1StartingBlockTag string, maxSeqDrift 
 	defer d.mu.Unlock()
 	d.T.Log("creating hardhat deploy config")
 
-	deployConf := HardhatDeployConfig{
-		L1StartingBlockTag: l1StartingBlockTag,
+	tag, err := blockTagToRPC(l1StartingBlockTag)
+	if err != nil {
+		d.T.Fatalf("failed to parse l1 starting block tag: %v", err)
+		return
+	}
+
+	deployConf := genesis.DeployConfig{
+		L1StartingBlockTag: tag,
 		L1ChainID:          uint64(L1ChainID),
 		L2ChainID:          uint64(L2ChainID),
 		L2BlockTime:        2,
@@ -106,7 +117,7 @@ func (d *Devnet) InitHardhatDeployConfig(l1StartingBlockTag string, maxSeqDrift 
 		MaxSequencerDrift:      maxSeqDrift,
 		SequencerWindowSize:    seqWindowSize,
 		ChannelTimeout:         chanTimeout,
-		P2pSequencerAddress:    d.Addresses.SequencerP2P,
+		P2PSequencerAddress:    d.Addresses.SequencerP2P,
 		OptimismL2FeeRecipient: common.Address{0: 0x42, 19: 0xf0}, // tbd
 		BatchInboxAddress:      common.Address{0: 0x42, 19: 0xff}, // tbd
 		BatchSenderAddress:     d.Addresses.Batcher,
@@ -119,25 +130,26 @@ func (d *Devnet) InitHardhatDeployConfig(l1StartingBlockTag string, maxSeqDrift 
 		L1BlockTime:                 15,
 		L1GenesisBlockNonce:         0,
 		CliqueSignerAddress:         d.Addresses.CliqueSigner,
+		L1GenesisBlockTimestamp:     hexutil.Uint64(time.Now().Unix()),
 		L1GenesisBlockGasLimit:      15_000_000,
-		L1GenesisBlockDifficulty:    1,
+		L1GenesisBlockDifficulty:    uint642big(1),
 		L1GenesisBlockMixHash:       common.Hash{},
 		L1GenesisBlockCoinbase:      common.Address{},
 		L1GenesisBlockNumber:        0,
 		L1GenesisBlockGasUsed:       0,
 		L1GenesisBlockParentHash:    common.Hash{},
-		L1GenesisBlockBaseFeePerGas: 1000_000_000, // 1 gwei
+		L1GenesisBlockBaseFeePerGas: uint642big(1000_000_000), // 1 gwei
 
 		L2GenesisBlockNonce:         0,
 		L2GenesisBlockExtraData:     []byte{},
 		L2GenesisBlockGasLimit:      15_000_000,
-		L2GenesisBlockDifficulty:    1,
+		L2GenesisBlockDifficulty:    uint642big(1),
 		L2GenesisBlockMixHash:       common.Hash{},
 		L2GenesisBlockCoinbase:      common.Address{0: 0x42, 19: 0xf0}, // matching OptimismL2FeeRecipient
 		L2GenesisBlockNumber:        0,
 		L2GenesisBlockGasUsed:       0,
 		L2GenesisBlockParentHash:    common.Hash{},
-		L2GenesisBlockBaseFeePerGas: 1000_000_000,
+		L2GenesisBlockBaseFeePerGas: uint642big(1000_000_000),
 
 		OptimismBaseFeeRecipient:    common.Address{0: 0x42, 19: 0xf1}, // tbd
 		OptimismL1FeeRecipient:      d.Addresses.Batcher,
@@ -146,9 +158,6 @@ func (d *Devnet) InitHardhatDeployConfig(l1StartingBlockTag string, maxSeqDrift 
 		GasPriceOracleOverhead:      2100,
 		GasPriceOracleScalar:        1000_000,
 		GasPriceOracleDecimals:      6,
-
-		ProxyAdmin:                  common.Address{0: 0x42, 19: 0xf4}, // tbd
-		FundDevAccounts:             true,
 		DeploymentWaitConfirmations: 1,
 	}
 
@@ -261,25 +270,25 @@ func (d *Devnet) DeployL1Hardhat() {
 		d.T.Fatal("no L1 eth1 node to deploy contracts to")
 	}
 
-	execInfo := d.RunScript("deploy to L1", "deploy_l1.sh",
-		d.Eth1s[0].HttpRpcEndpoint(), EncodePrivKey(d.Secrets.Deployer).String()[2:], d.L1Cfg.Config.ChainID.String())
-	d.T.Log("deployed contracts", execInfo.Stdout, execInfo.Stderr)
-
-	execInfo = d.RunScript("deployments", "deployments.sh")
-	var hhDeployments HardhatDeploymentsL1
-	if err := json.Unmarshal([]byte(execInfo.Stdout), &hhDeployments); err != nil {
-		d.T.Fatalf("failed to decode hardhat deployments: %v", err)
-	}
 	d.Deployments.DeploymentsL1 = DeploymentsL1{
-		L1CrossDomainMessengerProxy: hhDeployments.L1CrossDomainMessengerProxy.Address,
-		L1StandardBridgeProxy:       hhDeployments.L1StandardBridgeProxy.Address,
-		L2OutputOracleProxy:         hhDeployments.L2OutputOracleProxy.Address,
-		OptimismPortalProxy:         hhDeployments.OptimismPortalProxy.Address,
-		L1CrossDomainMessenger:      hhDeployments.L1CrossDomainMessenger.Address,
-		L1StandardBridge:            hhDeployments.L1StandardBridge.Address,
-		L2OutputOracle:              hhDeployments.L2OutputOracle.Address,
-		OptimismPortal:              hhDeployments.OptimismPortal.Address,
+		L1CrossDomainMessengerProxy: predeploys.DevL1CrossDomainMessengerAddr,
+		L1StandardBridgeProxy:       predeploys.DevL1StandardBridgeAddr,
+		L2OutputOracleProxy:         predeploys.DevL2OutputOracleAddr,
+		OptimismPortalProxy:         predeploys.DevOptimismPortalAddr,
 	}
 	d.T.Log("deployed L1 contracts with hardhat")
 	return
+}
+
+func blockTagToRPC(tag string) (*rpc.BlockNumberOrHash, error) {
+	tagJSON := fmt.Sprintf(`"%s"`, tag)
+	out := new(rpc.BlockNumberOrHash)
+	err := out.UnmarshalJSON([]byte(tagJSON))
+	return out, err
+}
+
+func uint642big(in uint64) *hexutil.Big {
+	b := new(big.Int).SetUint64(in)
+	hu := hexutil.Big(*b)
+	return &hu
 }

@@ -1,12 +1,16 @@
 ARG branch=develop
-FROM us-central1-docker.pkg.dev/bedrock-goerli-development/images/deployer-bedrock:$branch
+FROM us-central1-docker.pkg.dev/bedrock-goerli-development/images/contract-artifacts-bedrock:$branch as artifacts
+FROM us-central1-docker.pkg.dev/bedrock-goerli-development/images/op-node:$branch
 
-RUN npm install http-server -g
+RUN apk add --no-cache python3
 
 RUN echo $branch > /version.txt
 
-ADD entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY ./entrypoint.sh /entrypoint.sh
+COPY ./regenesis.sh.sh /regenesis.sh
+
+RUN chmod +x /entrypoint.sh && \
+    chmod +x /regenesis.sh
 
 # Helper scripts; called from devnet.go
 COPY scripts /hive-bin
