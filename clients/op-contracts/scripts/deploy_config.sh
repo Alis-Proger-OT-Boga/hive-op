@@ -9,8 +9,6 @@ echo "$1" > /config/hivenet.json
 
 echo "Creating genesis configs."
 
-ls -lah /artifacts
-
 op-node genesis devnet \
   --artifacts /artifacts/contracts-bedrock,/artifacts/contracts-governance \
   --deploy-config "/config/hivenet.json" \
