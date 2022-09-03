@@ -7,10 +7,8 @@ RUN apk add --no-cache python3
 RUN echo $branch > /version.txt
 
 COPY ./entrypoint.sh /entrypoint.sh
-COPY ./regenesis.sh.sh /regenesis.sh
 
-RUN chmod +x /entrypoint.sh && \
-    chmod +x /regenesis.sh
+RUN chmod +x /entrypoint.sh
 
 # Helper scripts; called from devnet.go
 COPY scripts /hive-bin
