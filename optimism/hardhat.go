@@ -239,6 +239,11 @@ func (d *Devnet) InitRollupHardhat() {
 		d.T.Fatalf("failed to decode hardhat rollup config")
 	}
 	d.RollupCfg = &rollupCfg
+
+	// Make sure that the genesis L2 hash matches any
+	// additional allocs we added during L2 initialization.
+	d.RollupCfg.Genesis.L2.Hash = d.L2Cfg.ToBlock(nil).Hash()
+
 	d.T.Log("created rollup config with hardhat")
 	return
 }
