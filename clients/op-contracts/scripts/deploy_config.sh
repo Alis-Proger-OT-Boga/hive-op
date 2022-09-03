@@ -13,7 +13,7 @@ ls -lah /artifacts
 
 op-node genesis devnet \
   --artifacts /artifacts/contracts-bedrock,/artifacts/contracts-governance \
-  --deploy-config "$1" \
+  --deploy-config "/config/hivenet.json" \
   --outfile.l1 "/config/genesis-l1.json" \
   --outfile.l2 "/config/genesis-l2.json" \
   --outfile.rollup "/config/rollup.json"
