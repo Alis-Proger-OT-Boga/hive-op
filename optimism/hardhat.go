@@ -2,14 +2,12 @@ package optimism
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/ethereum-optimism/optimism/op-bindings/predeploys"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/hive/hivesim"
 	"math/big"
 	"time"
@@ -200,8 +198,7 @@ func (d *Devnet) InitL2Hardhat(additionalAlloc core.GenesisAlloc) {
 		d.T.Fatal("no L1 eth1 node to fetch L1 info from for L2 config")
 	}
 
-	execInfo := d.RunScript("L2 config", "config_l2.sh",
-		d.Eth1s[0].HttpRpcEndpoint(), EncodePrivKey(d.Secrets.Deployer).String()[2:], d.L1Cfg.Config.ChainID.String())
+	execInfo := d.RunScript("L2 config", "config_l2.sh")
 
 	var l2Cfg core.Genesis
 	if err := json.Unmarshal([]byte(execInfo.Stdout), &l2Cfg); err != nil {
@@ -235,9 +232,7 @@ func (d *Devnet) InitRollupHardhat() {
 		d.T.Fatal("no L2 engine node to fetch L2 info from for rollup config")
 	}
 
-	execInfo := d.RunScript("rollup config",
-		"config_rollup.sh", d.Eth1s[0].HttpRpcEndpoint(), d.OpL2Engines[0].HttpRpcEndpoint(),
-		EncodePrivKey(d.Secrets.Deployer).String()[2:], d.L1Cfg.Config.ChainID.String())
+	execInfo := d.RunScript("rollup config", "config_rollup.sh")
 
 	var rollupCfg rollup.Config
 	if err := json.Unmarshal([]byte(execInfo.Stdout), &rollupCfg); err != nil {
@@ -271,13 +266,6 @@ func (d *Devnet) DeployL1Hardhat() {
 	}
 	d.T.Log("deployed L1 contracts with hardhat")
 	return
-}
-
-func blockTagToRPC(tag string) (*rpc.BlockNumberOrHash, error) {
-	tagJSON := fmt.Sprintf(`"%s"`, tag)
-	out := new(rpc.BlockNumberOrHash)
-	err := out.UnmarshalJSON([]byte(tagJSON))
-	return out, err
 }
 
 func uint642big(in uint64) *hexutil.Big {
