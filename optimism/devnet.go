@@ -4,16 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
-	"sync"
-	"time"
 
 	opbf "github.com/ethereum-optimism/optimism/op-batcher/flags"
 	opnf "github.com/ethereum-optimism/optimism/op-node/flags"
 	oppf "github.com/ethereum-optimism/optimism/op-proposer/flags"
+
 	"github.com/ethereum/hive/hivesim"
 )
 
@@ -126,6 +128,7 @@ func (d *Devnet) AddEth1(opts ...hivesim.StartOption) {
 		// Make the client connect to the first eth1 node, as a bootnode for the eth1 net
 		input = append(input, hivesim.Params{"HIVE_BOOTNODE": bootnode})
 	}
+	input = append(input, hivesim.Params{"HIVE_METRICS_NAME": fmt.Sprintf("eth1-%d", len(d.Eth1s))})
 
 	c := &Eth1Node{ELNode{d.T.StartClient(d.Clients.Eth1[0].Name, input...)}}
 	d.T.Logf("added eth1 node %d of type %s: %s", len(d.OpL2Engines), d.Clients.Eth1[0].Name, c.IP)
@@ -159,6 +162,7 @@ func (d *Devnet) AddOpL2(opts ...hivesim.StartOption) {
 	}
 	input = append(input, bytesFile("/genesis.json", l2GenesisCfg))
 	input = append(input, defaultJWTFile)
+	input = append(input, hivesim.Params{"HIVE_METRICS_NAME": fmt.Sprintf("op-l2-%d", len(d.OpL2Engines))})
 	input = append(input, opts...)
 
 	c := &OpL2Engine{ELNode{d.T.StartClient(d.Clients.OpL2[0].Name, input...)}}
@@ -193,6 +197,9 @@ func (d *Devnet) AddOpNode(eth1Index int, l2EngIndex int, sequencer bool, opts .
 		opnf.RPCListenPort.EnvVar:        fmt.Sprintf("%d", RollupRPCPort),
 		opnf.L1TrustRPC.EnvVar:           "false",
 		opnf.L2EngineJWTSecret.EnvVar:    defaultJWTPath,
+		opnf.MetricsEnabledFlag.EnvVar:   "true",
+		opnf.MetricsPortFlag.EnvVar:      "7300",
+		opnf.MetricsAddrFlag.EnvVar:      "0.0.0.0",
 		opnf.LogLevelFlag.EnvVar:         "debug",
 		opnf.SequencerEnabledFlag.EnvVar: seqStr,
 		opnf.SequencerL1Confs.EnvVar:     "0",
@@ -208,6 +215,7 @@ func (d *Devnet) AddOpNode(eth1Index int, l2EngIndex int, sequencer bool, opts .
 	input = append(input, bytesFile("/rollup_config.json", rollupCfg))
 	input = append(input, defaultJWTFile)
 	input = append(input, defaultP2pSequencerKeyFile)
+	input = append(input, hivesim.Params{"HIVE_METRICS_NAME": fmt.Sprintf("op-node-%d", len(d.OpNodes))})
 	input = append(input, opts...)
 
 	c := &OpNode{d.T.StartClient(d.Clients.OpNode[0].Name, input...)}
@@ -246,6 +254,7 @@ func (d *Devnet) AddOpProposer(eth1Index int, l2EngIndex int, opNodeIndex int, o
 		"OP_PROPOSER_LOG_LEVEL":                   "debug",
 	}
 	input := []hivesim.StartOption{defaultSettings.Params()}
+	input = append(input, hivesim.Params{"HIVE_METRICS_NAME": "op-proposer"})
 	input = append(input, opts...)
 
 	c := &ProposerNode{d.T.StartClient(d.Clients.OpProposer[0].Name, input...)}
@@ -287,6 +296,7 @@ func (d *Devnet) AddOpBatcher(eth1Index int, l2EngIndex int, opNodeIndex int, op
 		"OP_BATCHER_LOG_LEVEL":                     "debug",
 	}
 	input := []hivesim.StartOption{defaultSettings.Params()}
+	input = append(input, hivesim.Params{"HIVE_METRICS_NAME": "op-batcher"})
 	input = append(input, opts...)
 
 	c := &BatcherNode{d.T.StartClient(d.Clients.OpBatcher[0].Name, input...)}

@@ -65,6 +65,10 @@ func (b *fakeBackend) Build(context.Context, libhive.Builder) error {
 	return nil
 }
 
+func (b *fakeBackend) InitMetrics(ctx context.Context) error {
+	return nil
+}
+
 func (b *fakeBackend) ServeAPI(ctx context.Context, h http.Handler) (libhive.APIServer, error) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

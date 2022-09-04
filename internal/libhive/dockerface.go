@@ -19,6 +19,9 @@ type ContainerBackend interface {
 	// This is for launching the simulation API server.
 	ServeAPI(context.Context, http.Handler) (APIServer, error)
 
+	// InitMetrics starts prometheus as auxiliary container to scrape metrics with
+	InitMetrics(ctx context.Context) error
+
 	// These methods work with containers.
 	CreateContainer(ctx context.Context, image string, opt ContainerOptions) (string, error)
 	StartContainer(ctx context.Context, containerID string, opt ContainerOptions) (*ContainerInfo, error)
@@ -45,6 +48,11 @@ type APIServer interface {
 // This error is returned by NetworkNameToID if a docker network is not present.
 var ErrNetworkNotFound = fmt.Errorf("network not found")
 
+type MetricsOptions struct {
+	Port   uint16            `json:"port"`
+	Labels map[string]string `json:"labels"`
+}
+
 // ContainerOptions contains the launch parameters for docker containers.
 type ContainerOptions struct {
 	Env   map[string]string
@@ -61,6 +69,13 @@ type ContainerOptions struct {
 
 	// Input: if set, container stdin draws from the given reader.
 	Input io.ReadCloser
+
+	// This requests metrics scraping of the given endpoint to be served by the container
+	Metrics *MetricsOptions
+
+	// HostPorts binds the container port (key, formatted as "1234/tcp") to the given values
+	// (formatted as "1234", or empty if host assigns one)
+	HostPorts map[string][]string
 }
 
 // ContainerInfo is returned by StartContainer.
@@ -90,4 +105,8 @@ type Builder interface {
 // ClientMetadata is metadata to describe the client in more detail, configured with a YAML file in the client dir.
 type ClientMetadata struct {
 	Roles []string `yaml:"roles" json:"roles"`
+
+	// Metrics describes a metrics endpoint with labels to scrape with prometheus.
+	// Metrics scraping will not be enabled if left unspecified.
+	Metrics *MetricsOptions `yaml:"metrics,omitempty" json:"metrics,omitempty"`
 }

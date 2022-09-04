@@ -1,2 +1,8 @@
 roles:
   - "op-node"
+metrics:
+  port: 7300
+  path: "/metrics"
+  labels:
+    role: "op-node"
+

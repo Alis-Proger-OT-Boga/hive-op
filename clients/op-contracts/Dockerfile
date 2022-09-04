@@ -1,4 +1,4 @@
-ARG branch=develop
+ARG branch=c6edc561556bb99a72dab23618ebdf6c14ea0f24
 FROM us-central1-docker.pkg.dev/bedrock-goerli-development/images/contract-artifacts-bedrock:$branch as artifacts
 FROM us-central1-docker.pkg.dev/bedrock-goerli-development/images/op-node:$branch
 
