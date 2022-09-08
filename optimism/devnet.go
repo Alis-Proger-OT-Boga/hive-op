@@ -105,7 +105,7 @@ func (d *Devnet) AddEth1(opts ...hivesim.StartOption) {
 	if err != nil {
 		d.T.Fatalf("failed to serialize genesis state: %v", err)
 	}
-	eth1CfgOpt := bytesFile("/genesis.json", eth1Cfg)
+	eth1CfgOpt := BytesFile("/genesis.json", eth1Cfg)
 
 	input := []hivesim.StartOption{eth1CfgOpt, eth1Params}
 	if len(d.Eth1s) == 0 {
@@ -153,7 +153,7 @@ func (d *Devnet) AddOpL2(opts ...hivesim.StartOption) {
 		d.T.Fatalf("failed to encode l2 genesis: %v", err)
 		return
 	}
-	input = append(input, bytesFile("/genesis.json", l2GenesisCfg))
+	input = append(input, BytesFile("/genesis.json", l2GenesisCfg))
 	input = append(input, defaultJWTFile)
 	input = append(input, opts...)
 
@@ -188,11 +188,13 @@ func (d *Devnet) AddOpNode(eth1Index int, l2EngIndex int, sequencer bool, opts .
 		opnf.RPCListenAddr.EnvVar:        "0.0.0.0",
 		opnf.RPCListenPort.EnvVar:        fmt.Sprintf("%d", RollupRPCPort),
 		opnf.L1TrustRPC.EnvVar:           "false",
-		opnf.L2EngineJWTSecret.EnvVar:    defaultJWTPath,
+		opnf.L2EngineJWTSecret.EnvVar:    DefaultJWTPath,
 		opnf.LogLevelFlag.EnvVar:         "debug",
 		opnf.SequencerEnabledFlag.EnvVar: seqStr,
 		opnf.SequencerL1Confs.EnvVar:     "0",
-		opnf.SequencerP2PKeyFlag.EnvVar:  defaultP2PSequencerKeyPath,
+		opnf.VerifierL1Confs.EnvVar:      "0",
+		opnf.SequencerP2PKeyFlag.EnvVar:  DefaultP2PSequencerPrivPath,
+		opnf.P2PPrivPath.EnvVar:          DefaultP2PPrivPath,
 	}
 	input := []hivesim.StartOption{defaultSettings.Params()}
 
@@ -201,7 +203,7 @@ func (d *Devnet) AddOpNode(eth1Index int, l2EngIndex int, sequencer bool, opts .
 		d.T.Fatalf("failed to encode l2 genesis: %v", err)
 		return
 	}
-	input = append(input, bytesFile("/rollup_config.json", rollupCfg))
+	input = append(input, BytesFile("/rollup_config.json", rollupCfg))
 	input = append(input, defaultJWTFile)
 	input = append(input, defaultP2pSequencerKeyFile)
 	input = append(input, opts...)

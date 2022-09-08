@@ -15,22 +15,23 @@ import (
 	"time"
 )
 
-func bytesFile(name string, data []byte) hivesim.StartOption {
+func BytesFile(name string, data []byte) hivesim.StartOption {
 	return hivesim.WithDynamicFile(name, func() (io.ReadCloser, error) {
 		return ioutil.NopCloser(bytes.NewReader(data)), nil
 	})
 }
 
-func stringFile(name string, data string) hivesim.StartOption {
-	return bytesFile(name, []byte(data))
+func StringFile(name string, data string) hivesim.StartOption {
+	return BytesFile(name, []byte(data))
 }
 
-var defaultJWTPath = "/hive/input/jwt-secret.txt"
+var DefaultJWTPath = "/hive/input/jwt-secret.txt"
 var defaultJWTSecret = common.Hash{42}
-var defaultJWTFile = stringFile(defaultJWTPath, defaultJWTSecret.String())
-var defaultP2PSequencerKeyPath = "/hive/input/p2p-sequencer-key.txt"
+var defaultJWTFile = StringFile(DefaultJWTPath, defaultJWTSecret.String())
+var DefaultP2PSequencerPrivPath = "/hive/input/p2p-sequencer-key.txt"
+var DefaultP2PPrivPath = "/hive/input/p2p-key.txt"
 var defaultP2PSequencerKey = common.Hash{32}
-var defaultP2pSequencerKeyFile = stringFile(defaultP2PSequencerKeyPath, strings.Replace(defaultP2PSequencerKey.Hex(), "0x", "", 1))
+var defaultP2pSequencerKeyFile = StringFile(DefaultP2PSequencerPrivPath, strings.Replace(defaultP2PSequencerKey.Hex(), "0x", "", 1))
 
 // HiveUnpackParams are hivesim.Params that have yet to be prefixed with "HIVE_UNPACK_".
 //
