@@ -123,7 +123,13 @@ func (d *Devnet) AddEth1(opts ...hivesim.StartOption) {
 		input = append(input, hivesim.Params{"HIVE_BOOTNODE": bootnode})
 	}
 
-	c := &Eth1Node{ELNode{d.T.StartClient(d.Clients.Eth1[0].Name, input...)}}
+	c := &Eth1Node{
+		ELNode: ELNode{d.T.StartClient(d.Clients.Eth1[0].Name, input...)},
+		L1EngineClient: L1EngineClient{
+			client: nil,
+			log:    nil,
+		},
+	}
 	d.T.Logf("added eth1 node %d of type %s: %s", len(d.OpL2Engines), d.Clients.Eth1[0].Name, c.IP)
 	d.Eth1s = append(d.Eth1s, c)
 }
