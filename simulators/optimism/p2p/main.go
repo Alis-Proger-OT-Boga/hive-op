@@ -1,18 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"crypto/ecdsa"
-	"encoding/hex"
 	"fmt"
-	"github.com/ethereum-optimism/optimism/op-node/cmd/p2p"
-	"github.com/ethereum-optimism/optimism/op-node/flags"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"math/big"
-	"strconv"
 	"sync"
 	"time"
 
@@ -49,23 +42,14 @@ func runP2PTests(t *hivesim.T) {
 	d := optimism.NewDevnet(t)
 
 	d.InitChain(30, 4, 30, nil)
-	d.RollupCfg.P2PSequencerAddress = crypto.PubkeyToAddress(d.Secrets.SequencerP2P.PublicKey)
 	d.AddEth1() // l1 eth1 node is required for l2 config init
 	d.WaitUpEth1(0, time.Second*10)
 
 	var wg sync.WaitGroup
 	for i := 0; i <= replicaCount; i++ {
 		isSeq := i == 0
-		key, err := d.MnemonicCfg.P2PKeyFor(i)
-		require.NoError(t, err)
-		p2pPrivFile := optimism.StringFile(optimism.DefaultP2PPrivPath, hex.EncodeToString(optimism.EncodePrivKey(key)))
-		seqPrivFile := optimism.StringFile(optimism.DefaultP2PSequencerPrivPath, hex.EncodeToString(optimism.EncodePrivKey(d.Secrets.SequencerP2P)))
-
 		d.AddOpL2()
-		d.AddOpNode(0, i, isSeq, p2pPrivFile, seqPrivFile, optimism.HiveUnpackParams{
-			flags.AdvertiseTCPPort.EnvVar: strconv.Itoa(9300 + i),
-			flags.ListenTCPPort.EnvVar:    strconv.Itoa(9300 + i),
-		}.Params())
+		d.AddOpNode(0, i, isSeq)
 
 		if isSeq {
 			d.AddOpBatcher(0, 0, 0, optimism.HiveUnpackParams{}.Params())
@@ -90,11 +74,9 @@ func runP2PTests(t *hivesim.T) {
 			if i == j {
 				continue
 			}
-
-			peerAddr, err := addrFor(d, j)
-			require.NoError(t, err)
-			t.Logf("peering node %d (%s) with %d", j, peerAddr, i)
-			require.NoError(t, p2pClient.ConnectPeer(context.Background(), peerAddr))
+			peer := d.GetOpNode(j)
+			t.Logf("peering node %d (%s) with %d", j, peer.P2PAddr(), i)
+			require.NoError(t, p2pClient.ConnectPeer(context.Background(), peer.P2PAddr()))
 		}
 	}
 
@@ -169,7 +151,7 @@ func runP2PTests(t *hivesim.T) {
 			return fmt.Errorf("replica %d: sequencer does not have block at height %d", i, id.Number)
 		}
 		if h := bl.Hash(); h != id.Hash {
-			return fmt.Errorf("replica %d: sequencer diverged, height %d does not match: sequencer: %s <> verifier: %s", i, h, id.Hash)
+			return fmt.Errorf("replica %d: sequencer diverged, height %d does not match: sequencer: %s <> verifier: %s", i, id.Number, h, id.Hash)
 		}
 		return nil
 	}
@@ -241,23 +223,4 @@ func runP2PTests(t *hivesim.T) {
 	}
 
 	cancel()
-}
-
-func addrFor(d *optimism.Devnet, i int) (string, error) {
-	ip := d.GetOpNode(i).IP.String()
-	key, err := d.MnemonicCfg.P2PKeyFor(i)
-	if err != nil {
-		return "", err
-	}
-	return asMultiAddr(ip, key, 9300+i)
-}
-
-func asMultiAddr(ip string, privKey *ecdsa.PrivateKey, port int) (string, error) {
-	keyB := []byte(hex.EncodeToString(optimism.EncodePrivKey(privKey)))
-	peerID, err := p2p.Priv2PeerID(bytes.NewReader(keyB))
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("/ip4/%s/tcp/%d/p2p/%s", ip, port, peerID), nil
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/hive/hivesim"
 	"io"
 	"io/ioutil"
-	"strings"
 	"time"
 )
 
@@ -30,8 +29,6 @@ var defaultJWTSecret = common.Hash{42}
 var defaultJWTFile = StringFile(DefaultJWTPath, defaultJWTSecret.String())
 var DefaultP2PSequencerPrivPath = "/hive/input/p2p-sequencer-key.txt"
 var DefaultP2PPrivPath = "/hive/input/p2p-key.txt"
-var defaultP2PSequencerKey = common.Hash{32}
-var defaultP2pSequencerKeyFile = StringFile(DefaultP2PSequencerPrivPath, strings.Replace(defaultP2PSequencerKey.Hex(), "0x", "", 1))
 
 // HiveUnpackParams are hivesim.Params that have yet to be prefixed with "HIVE_UNPACK_".
 //
