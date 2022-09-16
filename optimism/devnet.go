@@ -46,6 +46,7 @@ type Devnet struct {
 	L1Vault     *Vault
 	L2Vault     *Vault
 
+	Indexer *IndexerNode
 	Proposer *ProposerNode
 	Batcher  *BatcherNode
 
@@ -316,6 +317,26 @@ func (d *Devnet) AddOpBatcher(eth1Index int, l2EngIndex int, opNodeIndex int, op
 	d.Batcher = c
 }
 
+// AddIndexer creates a new Optimism indexer.
+func (d *Devnet) AddIndexer(opts ...hivesim.StartOption) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if len(d.Clients.OpIndexer) == 0 {
+		d.T.Fatal("no indexer client types found")
+		return
+	}
+
+	defaultSettings := HiveUnpackParams{
+	}
+	input := []hivesim.StartOption{defaultSettings.Params()}
+	input = append(input, opts...)
+
+	c := &IndexerNode{d.T.StartClient(d.Clients.OpIndexer[0].Name, input...)}
+	d.T.Logf("added indexer: %s", c.IP)
+	d.Indexer = c
+}
+
 func (d *Devnet) GetEth1(i int) *Eth1Node {
 	if i < 0 || i >= len(d.Eth1s) {
 		d.T.Fatalf("only have %d eth1 nodes, cannot find %d", len(d.Eth1s), i)
@@ -506,6 +527,7 @@ type SequencerDevnetParams struct {
 	SeqWindowSize           uint64
 	ChanTimeout             uint64
 	AdditionalGenesisAllocs core.GenesisAlloc
+	EnableIndexer bool
 }
 
 func StartSequencerDevnet(ctx context.Context, d *Devnet, params *SequencerDevnetParams) error {
@@ -526,6 +548,11 @@ func StartSequencerDevnet(ctx context.Context, d *Devnet, params *SequencerDevne
 	expHeight := uint64(time.Now().Sub(time.Unix(int64(block.Time()), 0)).Seconds() / 2)
 	if err := WaitBlock(ctx, d.L2Client(0), expHeight); err != nil {
 		return err
+	}
+
+	if params.EnableIndexer {
+		// run indexer
+		d.AddIndexer()
 	}
 	return nil
 }

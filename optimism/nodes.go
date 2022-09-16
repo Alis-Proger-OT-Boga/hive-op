@@ -86,6 +86,10 @@ func (e *OpNode) P2PAddr() string {
 	return e.p2pAddr
 }
 
+type IndexerNode struct {
+	*hivesim.Client
+}
+
 type ProposerNode struct {
 	*hivesim.Client
 }

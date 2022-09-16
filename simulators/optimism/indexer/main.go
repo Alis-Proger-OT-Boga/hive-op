@@ -10,14 +10,14 @@ import (
 
 var depositTests = []*optimism.TestSpec{
 	{
-		Name: "deposit simple tx through the portal",
+		Name: "index simple deposit tx through the portal",
 		Run:  simplePortalDepositTest,
 	},
 }
 
 var withdrawalTests = []*optimism.TestSpec{
 	{
-		Name: "simple withdrawal",
+		Name: "index simple eth withdrawal",
 		Run:  simpleWithdrawalTest,
 	},
 }
@@ -32,12 +32,12 @@ Tests indexing deposits and withdrawals against a running node.
 
 	suite.Add(&hivesim.TestSpec{
 		Name:        "deposits",
-		Description: "Tests deposits.",
+		Description: "Tests deposit indexer.",
 		Run:         runAllTests(depositTests),
 	})
 	suite.Add(&hivesim.TestSpec{
 		Name:        "withdrawals",
-		Description: "Tests withdrawals.",
+		Description: "Tests withdrawal indexer.",
 		Run:         runAllTests(withdrawalTests),
 	})
 
@@ -55,6 +55,7 @@ func runAllTests(tests []*optimism.TestSpec) func(t *hivesim.T) {
 			MaxSeqDrift:   10,
 			SeqWindowSize: 4,
 			ChanTimeout:   30,
+			EnableIndexer: true,
 		}))
 
 		optimism.RunTests(ctx, t, &optimism.RunTestsParams{

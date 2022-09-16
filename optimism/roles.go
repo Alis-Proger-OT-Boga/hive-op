@@ -10,6 +10,7 @@ type ClientsByRole struct {
 	Eth1        []*hivesim.ClientDefinition
 	OpL2        []*hivesim.ClientDefinition
 	OpNode      []*hivesim.ClientDefinition
+	OpIndexer   []*hivesim.ClientDefinition
 	OpProposer  []*hivesim.ClientDefinition
 	OpBatcher   []*hivesim.ClientDefinition
 	OpContracts []*hivesim.ClientDefinition
@@ -27,6 +28,7 @@ func (cr *ClientsByRole) String() string {
 	out := "eth1: " + stringifyClientDefs(cr.Eth1)
 	out += ", op-l2: " + stringifyClientDefs(cr.OpL2)
 	out += ", op-node: " + stringifyClientDefs(cr.OpNode)
+	out += ", op-indexer" + stringifyClientDefs(cr.OpIndexer)
 	out += ", op-proposer: " + stringifyClientDefs(cr.OpProposer)
 	out += ", op-batcher: " + stringifyClientDefs(cr.OpBatcher)
 	out += ", op-contracts: " + stringifyClientDefs(cr.OpContracts)
@@ -44,6 +46,9 @@ func Roles(clientDefs []*hivesim.ClientDefinition) *ClientsByRole {
 		}
 		if client.HasRole("op-node") {
 			out.OpNode = append(out.OpNode, client)
+		}
+		if client.HasRole("op-indexer") {
+			out.OpIndexer = append(out.OpIndexer, client)
 		}
 		if client.HasRole("op-proposer") {
 			out.OpProposer = append(out.OpProposer, client)
