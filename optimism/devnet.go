@@ -46,9 +46,9 @@ type Devnet struct {
 	L1Vault     *Vault
 	L2Vault     *Vault
 
-	Indexer  *IndexerNode
-	Proposer *ProposerNode
-	Batcher  *BatcherNode
+	Indexer    *IndexerNode
+	Proposer   *ProposerNode
+	Batcher    *BatcherNode
 	Postgresql *PostgresqlNode
 
 	L1Cfg     *core.Genesis
@@ -346,8 +346,6 @@ func (d *Devnet) AddIndexer(opts ...hivesim.StartOption) {
 		return
 	}
 
-	d.AddPostgresql()
-
 	defaultSettings := HiveUnpackParams{}
 	input := []hivesim.StartOption{defaultSettings.Params()}
 	input = append(input, opts...)
@@ -572,6 +570,7 @@ func StartSequencerDevnet(ctx context.Context, d *Devnet, params *SequencerDevne
 
 	if params.EnableIndexer {
 		// run indexer
+		d.AddPostgresql()
 		d.AddIndexer()
 	}
 	return nil
