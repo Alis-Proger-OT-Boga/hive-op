@@ -10,4 +10,4 @@ while IFS='=' read -r -d '' n v; do
     fi
 done < <(env -0)
 
-indexer --l1-eth-rpc http://172.17.0.3:8545 --l2-eth-rpc http://172.17.0.4:9545 --build-env development --eth-network-name simnet --chain-id 901 --db-host 172.17.0.9 --db-port 5432 --db-user postgres --db-password postgres --db-name=indexer --start-block-number 0 --log-terminal --log-level debug
+indexer --build-env development --eth-network-name devnet --chain-id 901 --db-host 172.17.0.9 --db-port 5432 --db-user postgres --db-password postgres --db-name=indexer --start-block-number 0 --log-terminal --log-level debug

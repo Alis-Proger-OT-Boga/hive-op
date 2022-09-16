@@ -339,7 +339,7 @@ func (d *Devnet) AddPostgresql(opts ...hivesim.StartOption) {
 }
 
 // AddIndexer creates a new Optimism indexer.
-func (d *Devnet) AddIndexer(opts ...hivesim.StartOption) {
+func (d *Devnet) AddIndexer(eth1Index, l2EngIndex int, opts ...hivesim.StartOption) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -348,7 +348,12 @@ func (d *Devnet) AddIndexer(opts ...hivesim.StartOption) {
 		return
 	}
 
-	defaultSettings := HiveUnpackParams{}
+	eth1Node := d.GetEth1(eth1Index)
+	l2Engine := d.GetOpL2Engine(l2EngIndex)
+	defaultSettings := HiveUnpackParams{
+		"INDEXER_L1_ETH_RPC":                  eth1Node.HttpRpcEndpoint(),
+		"INDEXER_L2_ETH_RPC":                  l2Engine.HttpRpcEndpoint(),
+	}
 	input := []hivesim.StartOption{defaultSettings.Params()}
 	input = append(input, opts...)
 
@@ -564,7 +569,7 @@ func StartSequencerDevnet(ctx context.Context, d *Devnet, params *SequencerDevne
 	if params.EnableIndexer {
 		// run indexer
 		d.AddPostgresql()
-		d.AddIndexer()
+		d.AddIndexer(0, 0)
 	}
 
 	block, err := d.L1Client(0).BlockByNumber(ctx, nil)
