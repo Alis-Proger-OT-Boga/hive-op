@@ -90,6 +90,10 @@ type IndexerNode struct {
 	*hivesim.Client
 }
 
+type PostgresqlNode struct {
+	*hivesim.Client
+}
+
 type ProposerNode struct {
 	*hivesim.Client
 }

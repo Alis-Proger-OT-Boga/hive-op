@@ -14,6 +14,7 @@ type ClientsByRole struct {
 	OpProposer  []*hivesim.ClientDefinition
 	OpBatcher   []*hivesim.ClientDefinition
 	OpContracts []*hivesim.ClientDefinition
+	Postgresql  []*hivesim.ClientDefinition
 }
 
 func stringifyClientDefs(clientDefs []*hivesim.ClientDefinition) string {
@@ -58,6 +59,9 @@ func Roles(clientDefs []*hivesim.ClientDefinition) *ClientsByRole {
 		}
 		if client.HasRole("op-contracts") {
 			out.OpContracts = append(out.OpContracts, client)
+		}
+		if client.HasRole("op-postgresql") {
+			out.Postgresql = append(out.Postgresql, client)
 		}
 		fmt.Println("client: ", client.Name, " meta: ", client.Meta, " version: ", client.Version)
 	}

@@ -1,5 +1,4 @@
-ARG branch=develop
-FROM postgres:14.3
+FROM debian:bullseye-slim
 
 COPY ./entrypoint.sh /entrypoint.sh
 COPY ./indexer /bin

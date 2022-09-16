@@ -46,9 +46,10 @@ type Devnet struct {
 	L1Vault     *Vault
 	L2Vault     *Vault
 
-	Indexer *IndexerNode
+	Indexer  *IndexerNode
 	Proposer *ProposerNode
 	Batcher  *BatcherNode
+	Postgresql *PostgresqlNode
 
 	L1Cfg     *core.Genesis
 	L2Cfg     *core.Genesis
@@ -317,6 +318,24 @@ func (d *Devnet) AddOpBatcher(eth1Index int, l2EngIndex int, opNodeIndex int, op
 	d.Batcher = c
 }
 
+func (d *Devnet) AddPostgresql(opts ...hivesim.StartOption) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if len(d.Clients.Postgresql) == 0 {
+		d.T.Fatal("no postgresql client types found")
+		return
+	}
+
+	defaultSettings := HiveUnpackParams{}
+	input := []hivesim.StartOption{defaultSettings.Params()}
+	input = append(input, opts...)
+
+	c := &PostgresqlNode{d.T.StartClient(d.Clients.Postgresql[0].Name, input...)}
+	d.T.Logf("added postgresql: %s", c.IP)
+	d.Postgresql = c
+}
+
 // AddIndexer creates a new Optimism indexer.
 func (d *Devnet) AddIndexer(opts ...hivesim.StartOption) {
 	d.mu.Lock()
@@ -327,8 +346,9 @@ func (d *Devnet) AddIndexer(opts ...hivesim.StartOption) {
 		return
 	}
 
-	defaultSettings := HiveUnpackParams{
-	}
+	d.AddPostgresql()
+
+	defaultSettings := HiveUnpackParams{}
 	input := []hivesim.StartOption{defaultSettings.Params()}
 	input = append(input, opts...)
 
@@ -527,7 +547,7 @@ type SequencerDevnetParams struct {
 	SeqWindowSize           uint64
 	ChanTimeout             uint64
 	AdditionalGenesisAllocs core.GenesisAlloc
-	EnableIndexer bool
+	EnableIndexer           bool
 }
 
 func StartSequencerDevnet(ctx context.Context, d *Devnet, params *SequencerDevnetParams) error {
