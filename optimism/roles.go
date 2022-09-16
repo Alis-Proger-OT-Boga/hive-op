@@ -29,10 +29,11 @@ func (cr *ClientsByRole) String() string {
 	out := "eth1: " + stringifyClientDefs(cr.Eth1)
 	out += ", op-l2: " + stringifyClientDefs(cr.OpL2)
 	out += ", op-node: " + stringifyClientDefs(cr.OpNode)
-	out += ", op-indexer" + stringifyClientDefs(cr.OpIndexer)
+	out += ", op-indexer: " + stringifyClientDefs(cr.OpIndexer)
 	out += ", op-proposer: " + stringifyClientDefs(cr.OpProposer)
 	out += ", op-batcher: " + stringifyClientDefs(cr.OpBatcher)
 	out += ", op-contracts: " + stringifyClientDefs(cr.OpContracts)
+	out += ", op-postgresql: " + stringifyClientDefs(cr.Postgresql)
 	return out
 }
 

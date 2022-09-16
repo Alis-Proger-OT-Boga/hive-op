@@ -327,8 +327,10 @@ func (d *Devnet) AddPostgresql(opts ...hivesim.StartOption) {
 		return
 	}
 
-	defaultSettings := HiveUnpackParams{}
-	input := []hivesim.StartOption{defaultSettings.Params()}
+	defaultSettings := hivesim.Params{
+		"HIVE_CHECK_LIVE_PORT": "5432",
+	}
+	input := []hivesim.StartOption{defaultSettings}
 	input = append(input, opts...)
 
 	c := &PostgresqlNode{d.T.StartClient(d.Clients.Postgresql[0].Name, input...)}
@@ -559,6 +561,12 @@ func StartSequencerDevnet(ctx context.Context, d *Devnet, params *SequencerDevne
 	d.AddOpBatcher(0, 0, 0)
 	d.AddOpProposer(0, 0, 0)
 
+	if params.EnableIndexer {
+		// run indexer
+		d.AddPostgresql()
+		d.AddIndexer()
+	}
+
 	block, err := d.L1Client(0).BlockByNumber(ctx, nil)
 	if err != nil {
 		return err
@@ -568,11 +576,6 @@ func StartSequencerDevnet(ctx context.Context, d *Devnet, params *SequencerDevne
 		return err
 	}
 
-	if params.EnableIndexer {
-		// run indexer
-		d.AddPostgresql()
-		d.AddIndexer()
-	}
 	return nil
 }
 
