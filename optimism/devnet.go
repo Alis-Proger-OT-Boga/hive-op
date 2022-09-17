@@ -351,8 +351,21 @@ func (d *Devnet) AddIndexer(eth1Index, l2EngIndex int, opts ...hivesim.StartOpti
 	eth1Node := d.GetEth1(eth1Index)
 	l2Engine := d.GetOpL2Engine(l2EngIndex)
 	defaultSettings := HiveUnpackParams{
-		"INDEXER_L1_ETH_RPC":                  eth1Node.HttpRpcEndpoint(),
-		"INDEXER_L2_ETH_RPC":                  l2Engine.HttpRpcEndpoint(),
+		"INDEXER_L1_ETH_RPC":         eth1Node.HttpRpcEndpoint(),
+		"INDEXER_L2_ETH_RPC":         l2Engine.HttpRpcEndpoint(),
+		"INDEXER_BUILD_ENV":          "development",
+		"INDEXER_ETH_NETWORK_NAME":   "devnet",
+		"INDEXER_CHAIN_ID":           "901",
+		"INDEXER_DB_HOST":            "172.17.0.9",
+		"INDEXER_DB_PORT":            "5432",
+		"INDEXER_DB_USER":            "postgres",
+		"INDEXER_DB_PASSWORD":        "postgres",
+		"INDEXER_DB_NAME":            "indexer",
+		"INDEXER_REST_HOSTNAME":      "0.0.0.0",
+		"INDEXER_START_BLOCK_NUMBER": "0",
+		"INDEXER_LOG_TERMINAL":       "true",
+		"INDEXER_LOG_LEVEL":          "debug",
+		"INDEXER_CONF_DEPTH":         "1",
 	}
 	input := []hivesim.StartOption{defaultSettings.Params()}
 	input = append(input, opts...)
@@ -569,7 +582,12 @@ func StartSequencerDevnet(ctx context.Context, d *Devnet, params *SequencerDevne
 	if params.EnableIndexer {
 		// run indexer
 		d.AddPostgresql()
-		d.AddIndexer(0, 0)
+		// FIXME
+		time.Sleep(10 * time.Second)
+		opts := hivesim.Params{
+			"HIVE_CHECK_LIVE_PORT": "8080",
+		}
+		d.AddIndexer(0, 0, opts)
 	}
 
 	block, err := d.L1Client(0).BlockByNumber(ctx, nil)
