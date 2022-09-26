@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -216,7 +217,7 @@ func (d *Devnet) AddOpNode(eth1Index int, l2EngIndex int, sequencer bool, opts .
 	input = append(input, StringFile(DefaultP2PPrivPath, hex.EncodeToString(EncodePrivKey(p2pKey))))
 	if sequencer {
 		input = append(input,
-			HiveUnpackParams{opnf.SequencerP2PKeyFlag.EnvVar: EncodePrivKey(d.Secrets.SequencerP2P).String()}.Params(),
+			HiveUnpackParams{opnf.SequencerP2PKeyFlag.EnvVar: strings.Replace(EncodePrivKey(d.Secrets.SequencerP2P).String(), "0x", "", 1)}.Params(),
 		)
 	}
 
