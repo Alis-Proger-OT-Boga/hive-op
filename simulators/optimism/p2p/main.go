@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/eth"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/driver"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
@@ -33,6 +34,12 @@ func main() {
 		Description: `This suite runs the a testnet with P2P set up`,
 		Run:         func(t *hivesim.T) { runP2PTests(t) },
 	})
+	// Tx Forwarding tests
+	suite.Add(&hivesim.TestSpec{
+		Name:        "no tx gossiping",
+		Description: `This test verifies that no transaction gossiping occurs`,
+		Run:         func(t *hivesim.T) { noGossipTest(t) },
+	})
 	suite.Add(&hivesim.TestSpec{
 		Name:        "tx forwarding",
 		Description: `This test verifies that tx forwarding works`,
@@ -41,6 +48,74 @@ func main() {
 
 	sim := hivesim.New()
 	hivesim.MustRunSuite(sim, suite)
+}
+
+// noGossipTest verifies that the `--rollup.disabletxpoolgossip` flag is properly working in this test setup.
+// If this flag is not working the the txForwarding test might pass due to this feature rather than
+// if the tx forwarding feature was working.
+// TODO: This test does not fail if “rollup.disabletxpoolgossip" is set. I (joshua) suspect that it is due
+// to peering not being set up.
+func noGossipTest(t *hivesim.T) {
+	d := optimism.NewDevnet(t)
+	sender := d.L2Vault.GenerateKey()
+	receiver := d.L2Vault.GenerateKey()
+	d.InitChain(30, 4, 30, core.GenesisAlloc{sender: {Balance: big.NewInt(params.Ether)}})
+	d.AddEth1()
+	d.WaitUpEth1(0, time.Second*10)
+
+	d.AddOpL2()
+	d.AddOpNode(0, 0, true)
+	d.AddOpL2()
+	d.AddOpNode(0, 1, false)
+
+	d.AddOpBatcher(0, 0, 0, optimism.HiveUnpackParams{}.Params())
+	d.AddOpProposer(0, 0, 0)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		d.WaitUpOpL2Engine(0, time.Second*10)
+		wg.Done()
+	}()
+	go func() {
+		d.WaitUpOpL2Engine(1, time.Second*10)
+		wg.Done()
+	}()
+
+	t.Log("waiting for nodes to come up")
+	wg.Wait()
+
+	seqClient := d.GetOpL2Engine(0).EthClient()
+	verifClient := d.GetOpL2Engine(1).EthClient()
+
+	baseTx := types.NewTx(&types.DynamicFeeTx{
+		ChainID:   optimism.L2ChainIDBig,
+		Nonce:     0,
+		To:        &receiver,
+		Gas:       75000,
+		GasTipCap: big.NewInt(1),
+		GasFeeCap: big.NewInt(2),
+		Value:     big.NewInt(0.0001 * params.Ether),
+	})
+
+	tx, err := d.L2Vault.SignTransaction(sender, baseTx)
+	require.Nil(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	require.NoError(t, verifClient.SendTransaction(ctx, tx))
+
+	t.Log("sent tx to verifier, waiting for (non) propagation")
+
+	<-time.After(10 * time.Second)
+
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, _, err = seqClient.TransactionByHash(ctx, tx.Hash())
+	if err != ethereum.NotFound {
+		t.Fatal("the transaction sent to the verifier showed up on the sequencer despite tx gossiping & tx forwarding being turned off")
+	}
 }
 
 // txForwardingTest verifies that a transaction submitted to a replica with tx forwarding enabled shows up on the sequencer.
