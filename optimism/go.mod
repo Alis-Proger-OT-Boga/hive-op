@@ -8,6 +8,7 @@ require (
 	github.com/ethereum-optimism/optimism/op-batcher v0.9.0
 	github.com/ethereum-optimism/optimism/op-bindings v0.9.0
 	github.com/ethereum-optimism/optimism/op-chain-ops v0.9.0
+	github.com/ethereum-optimism/optimism/op-e2e v0.9.0
 	github.com/ethereum-optimism/optimism/op-node v0.9.0
 	github.com/ethereum-optimism/optimism/op-proposer v0.9.0
 	github.com/ethereum/go-ethereum v1.10.23

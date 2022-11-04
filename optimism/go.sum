@@ -181,6 +181,8 @@ github.com/ethereum-optimism/optimism/op-bindings v0.9.0 h1:CZmeC5Jq5T7ijjUor+yl
 github.com/ethereum-optimism/optimism/op-bindings v0.9.0/go.mod h1:ahYJOfSx0e0kwDq7doROfxMa00CXuklAGC5uS9kKdTU=
 github.com/ethereum-optimism/optimism/op-chain-ops v0.9.0 h1:oWhjl3ZkOjzdRkgE2q3b2nTuqegHbwXsFmSAb3y5nL0=
 github.com/ethereum-optimism/optimism/op-chain-ops v0.9.0/go.mod h1:0DdDDwMEBdBMkqWfX8c5s17nDdKAyf+9VKnlk++bYYQ=
+github.com/ethereum-optimism/optimism/op-e2e v0.9.0 h1:cEnXyLsmCPSozFeXx7H+MaYoFLc/kZ3abGp+DjVaO80=
+github.com/ethereum-optimism/optimism/op-e2e v0.9.0/go.mod h1:wvTyLXBoRFl6n6WyziC7a6d8x8uQyPjhRNw6V6Jrwe4=
 github.com/ethereum-optimism/optimism/op-node v0.9.0 h1:fdIhZBKs51EZhVQT51PpZ/Ug+W0eqt88UhNAaQ7ySzk=
 github.com/ethereum-optimism/optimism/op-node v0.9.0/go.mod h1:0kVRsoEdYTkxd0Bgi5UddpQE+n7uI7WGMh2KLwJ4/Tk=
 github.com/ethereum-optimism/optimism/op-proposer v0.9.0 h1:jOT8ckvQDc0Dssr/l86zEH+FMRgMpAp23er/v+DY+FE=
