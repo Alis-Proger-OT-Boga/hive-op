@@ -430,10 +430,7 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 		L2GenesisBlockParentHash:    common.Hash{},
 		L2GenesisBlockBaseFeePerGas: uint642big(1000_000_000),
 
-		OptimismBaseFeeRecipient:    common.Address{0: 0x42, 19: 0xf1}, // tbd
-		OptimismL1FeeRecipient:      d.Addresses.Batcher,
 		L2CrossDomainMessengerOwner: common.Address{0: 0x42, 19: 0xf2}, // tbd
-		GasPriceOracleOwner:         common.Address{0: 0x42, 19: 0xf3}, // tbd
 		GasPriceOracleOverhead:      2100,
 		GasPriceOracleScalar:        1000_000,
 		DeploymentWaitConfirmations: 1,
@@ -444,6 +441,11 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 		FundDevAccounts: true,
 	}
 
+	err := config.InitDeveloperDeployedAddresses()
+	if err != nil {
+		d.T.Fatalf("failed to initialize developer deployed addresses: %v", err)
+	}
+
 	l1Genesis, err := genesis.BuildL1DeveloperGenesis(config)
 	if err != nil {
 		d.T.Fatalf("failed to create l1 genesis: %v", err)
@@ -451,7 +453,7 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 	d.L1Cfg = l1Genesis
 
 	l1Block := l1Genesis.ToBlock()
-	l2Genesis, err := genesis.BuildL2DeveloperGenesis(config, l1Block, nil)
+	l2Genesis, err := genesis.BuildL2DeveloperGenesis(config, l1Block)
 	if err != nil {
 		d.T.Fatalf("failed to create l2 genesis: %v", err)
 	}

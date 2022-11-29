@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/ethereum/go-ethereum/ethclient/gethclient"
 	"math/big"
 	"math/rand"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/ethclient/gethclient"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/hive/hivesim"
 	"github.com/ethereum/hive/optimism"
@@ -227,32 +227,53 @@ func erc20RoundtripTest(t *hivesim.T, env *optimism.TestEnv) {
 		env.Devnet.Deployments.OptimismPortalProxy,
 		receipt.BlockNumber,
 	)
+	require.NoError(t, err)
 
 	// Get the last block number
-	require.NoError(t, err)
 	finHeader, err := l2.HeaderByNumber(env.Ctx(), big.NewInt(int64(finBlockNum)))
 	require.NoError(t, err)
 
 	// Get withdrawal parameters
 	proofClient := gethclient.New(env.Devnet.GetOpL2Engine(0).RPC())
-	wParams, err := withdrawals.FinalizeWithdrawalParameters(env.Ctx(), proofClient, l2, tx.Hash(), finHeader)
+	wParams, err := withdrawals.ProveWithdrawalParameters(env.Ctx(), proofClient, l2, tx.Hash(), finHeader)
 	require.NoError(t, err)
 
-	// Finalize the withdrawal
+	// Create a withdrawalTx
+	withdrawalTx := bindings.TypesWithdrawalTransaction{
+		Nonce:    wParams.Nonce,
+		Sender:   wParams.Sender,
+		Target:   wParams.Target,
+		Value:    wParams.Value,
+		GasLimit: wParams.GasLimit,
+		Data:     wParams.Data,
+	}
+
+	// Prove the withdrawal
 	portal := env.Devnet.Bindings.BindingsL1.OptimismPortal
-	finTx, err := portal.FinalizeWithdrawalTransaction(
+	proveTx, err := portal.ProveWithdrawalTransaction(
 		l1Opts,
-		bindings.TypesWithdrawalTransaction{
-			Nonce:    wParams.Nonce,
-			Sender:   wParams.Sender,
-			Target:   wParams.Target,
-			Value:    wParams.Value,
-			GasLimit: wParams.GasLimit,
-			Data:     wParams.Data,
-		},
+		withdrawalTx,
 		wParams.BlockNumber,
 		wParams.OutputRootProof,
 		wParams.WithdrawalProof,
+	)
+	require.NoError(t, err)
+	_, err = optimism.WaitReceiptOK(env.TimeoutCtx(time.Minute), l1, proveTx.Hash())
+	require.NoError(t, err)
+
+	// Await finalization period
+	_, err = withdrawals.WaitForFinalizationPeriod(
+		env.TimeoutCtx(5*time.Minute),
+		l1,
+		env.Devnet.Deployments.OptimismPortalProxy,
+		receipt.BlockNumber,
+	)
+	require.NoError(t, err)
+
+	// finalize the withdrawal
+	finTx, err := portal.FinalizeWithdrawalTransaction(
+		l1Opts,
+		withdrawalTx,
 	)
 	require.NoError(t, err)
 	_, err = optimism.WaitReceiptOK(env.TimeoutCtx(time.Minute), l1, finTx.Hash())
