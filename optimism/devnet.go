@@ -398,13 +398,12 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 		P2PSequencerAddress:       d.Addresses.SequencerP2P,
 		BatchInboxAddress:         common.Address{0: 0x42, 19: 0xff}, // tbd
 		BatchSenderAddress:        d.Addresses.Batcher,
+		FinalSystemOwner:          d.Addresses.Deployer,
 
 		L2OutputOracleSubmissionInterval: 6,
 		L2OutputOracleStartingTimestamp:  -1,
 		L2OutputOracleProposer:           d.Addresses.Proposer,
 		L2OutputOracleChallenger:         common.Address{}, // tbd
-
-		SystemConfigOwner: common.Address{0: 0x42, 1: 43},
 
 		L1BlockTime:                 15,
 		L1GenesisBlockNonce:         0,
@@ -481,7 +480,6 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 		ChannelTimeout:         config.ChannelTimeout,
 		L1ChainID:              new(big.Int).SetUint64(config.L1ChainID),
 		L2ChainID:              new(big.Int).SetUint64(config.L2ChainID),
-		P2PSequencerAddress:    config.P2PSequencerAddress,
 		BatchInboxAddress:      config.BatchInboxAddress,
 		DepositContractAddress: predeploys.DevOptimismPortalAddr,
 		L1SystemConfigAddress:  predeploys.DevSystemConfigAddr,

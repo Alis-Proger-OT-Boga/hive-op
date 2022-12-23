@@ -243,6 +243,7 @@ github.com/ethereum-optimism/optimism/l2geth v0.0.0-20220820030939-de38b6f6f77e 
 github.com/ethereum-optimism/optimism/l2geth v0.0.0-20220820030939-de38b6f6f77e/go.mod h1:Oj5A6Qs/Ao1SP17i3uKroyhz49q/ehagSXRAlvwaI5Y=
 github.com/ethereum-optimism/optimism/op-batcher v0.10.1 h1:y/PlBJfmJ74UzbPPLntIfCO/l4yAOeCPPyUsiZd7C9Q=
 github.com/ethereum-optimism/optimism/op-batcher v0.10.1/go.mod h1:GUWRM7Bhc05H4gUj8ggTZnegVS4bfltZq0gqXh18Fvk=
+github.com/ethereum-optimism/optimism/op-batcher v0.10.4/go.mod h1:a19oViWrL7dy1pPSIa2Dgsv8o97HOzVtKx+m2J5qQqY=
 github.com/ethereum-optimism/optimism/op-bindings v0.5.0/go.mod h1:Ft+sL57mlBysH6nuXZA11GLMMajfBa8SjpEBtitl1Vw=
 github.com/ethereum-optimism/optimism/op-bindings v0.10.1 h1:OxzYjPmjl5DblgvS0z27M8lZInjdm9Wt6ajozXuMhmw=
 github.com/ethereum-optimism/optimism/op-bindings v0.10.1/go.mod h1:UeTZlpZyhOL3y9Sogzvbn8Z3q1tDmZEv1VmGxMiZYCg=
