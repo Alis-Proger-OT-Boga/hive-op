@@ -1,6 +1,7 @@
 package hivesim
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/rpc"
 )
+
+var ErrClientNotRunning = errors.New("client not running")
 
 // Suite is the description of a test suite.
 type Suite struct {
@@ -82,13 +85,12 @@ func MustRunSuite(host *Simulation, suite Suite) {
 // Using this test type doesn't launch any clients by default. To interact with clients,
 // you can launch them using the t.Client method:
 //
-//    c := t.Client()
-//    c.RPC().Call(...)
+//	c := t.Client()
+//	c.RPC().Call(...)
 //
 // or run a subtest using t.RunClientTest():
 //
-//    t.RunClientTest(hivesim.ClientTestSpec{...})
-//
+//	t.RunClientTest(hivesim.ClientTestSpec{...})
 type TestSpec struct {
 	// These fields are displayed in the UI. Be sure to add
 	// a meaningful description here.
@@ -168,6 +170,18 @@ func (c *Client) RPC() *rpc.Client {
 // Exec runs a script in the client container.
 func (c *Client) Exec(command ...string) (*ExecInfo, error) {
 	return c.test.Sim.ClientExec(c.test.SuiteID, c.test.TestID, c.Container, command)
+}
+
+// Shutdown shuts down the client.
+func (c *Client) Shutdown() error {
+	if c.Container == "" {
+		return ErrClientNotRunning
+	}
+	if err := c.test.Sim.StopClient(c.test.SuiteID, c.test.TestID, c.Container); err != nil {
+		return err
+	}
+	c.Container = ""
+	return nil
 }
 
 // T is a running test. This is a lot like testing.T, but has some additional methods for
