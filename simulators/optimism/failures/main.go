@@ -10,7 +10,7 @@ import (
 )
 
 var tests = []*optimism.TestSpec{
-	//{Name: "deposit while sequencer is down", Run: depositWhileSequencerDownTest},
+	{Name: "deposit while sequencer is down", Run: depositWhileSequencerDownTest},
 }
 
 func main() {
