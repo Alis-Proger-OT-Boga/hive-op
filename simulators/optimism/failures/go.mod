@@ -1,4 +1,4 @@
-module github.com/ethereum/hive/simulators/optimism/p2p
+module github.com/ethereum/hive/simulators/optimism/failures
 
 go 1.18
 

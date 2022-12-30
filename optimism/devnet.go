@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -494,6 +495,66 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 	}
 
 	d.T.Log("created genesis files")
+}
+
+func (d *Devnet) ShutdownAll(ignoreNotRunning bool) error {
+	if err := handleShutdown(d.Proposer, ignoreNotRunning); err != nil {
+		return fmt.Errorf("error shutting down proposer: %w", err)
+	}
+	if err := handleShutdown(d.Batcher, ignoreNotRunning); err != nil {
+		return fmt.Errorf("error shutting down batcher: %w", err)
+	}
+	for i, node := range d.OpNodes {
+		if err := handleShutdown(node, ignoreNotRunning); err != nil {
+			return fmt.Errorf("error shutting down op node %d: %w", i, err)
+		}
+	}
+	for i, node := range d.OpL2Engines {
+		if err := handleShutdown(node, ignoreNotRunning); err != nil {
+			return fmt.Errorf("error shutting down l2 engine %d: %w", i, err)
+		}
+	}
+	for i, node := range d.Eth1s {
+		if err := handleShutdown(node, ignoreNotRunning); err != nil {
+			return fmt.Errorf("error shutting down eth1 %d: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func (d *Devnet) ShutdownBatcher() error {
+	if err := handleShutdown(d.Batcher, false); err != nil {
+		return fmt.Errorf("error shutting down batcher: %w", err)
+	}
+	d.Batcher = nil
+	return nil
+}
+
+func (d *Devnet) ShutdownProposer() error {
+	if err := handleShutdown(d.Proposer, false); err != nil {
+		return fmt.Errorf("error shutting down proposer: %w", err)
+	}
+	d.Proposer = nil
+	return nil
+}
+
+type shutdowner interface {
+	Shutdown() error
+}
+
+func handleShutdown(sd shutdowner, ignoreNotRunning bool) error {
+	if sd == nil {
+		return nil
+	}
+
+	err := sd.Shutdown()
+	if err == nil {
+		return nil
+	}
+	if ignoreNotRunning && errors.Is(err, hivesim.ErrClientNotRunning) {
+		return nil
+	}
+	return err
 }
 
 type SequencerDevnetParams struct {

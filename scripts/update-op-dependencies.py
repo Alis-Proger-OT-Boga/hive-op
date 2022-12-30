@@ -6,6 +6,7 @@ import subprocess
 
 MODULES = [
     'optimism',
+    'simulators/optimism/failures',
     'simulators/optimism/l1ops',
     'simulators/optimism/p2p',
     'simulators/optimism/rpc',

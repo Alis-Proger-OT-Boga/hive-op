@@ -13,6 +13,7 @@ use (
 	./simulators/ethereum/rpc
 	./simulators/ethereum/rpc-compat
 	./simulators/ethereum/sync
+	./simulators/optimism/failures
 	./simulators/optimism/l1ops
 	./simulators/optimism/p2p
 	./simulators/optimism/rpc
@@ -22,3 +23,5 @@ use (
 )
 
 replace github.com/ethereum/go-ethereum v1.10.26 => github.com/ethereum-optimism/op-geth v0.0.0-20221205191237-0678a130d790
+
+replace github.com/ethereum/hive v0.0.0-20220727121216-02ad57aaf9c1 => github.com/ethereum-optimism/hive v0.0.0-20221230044450-20fa5f8e2822
