@@ -1,5 +1,5 @@
 ARG branch=develop
-FROM us-central1-docker.pkg.dev/bedrock-goerli-development/images/op-proposer:$branch
+FROM us-docker.pkg.dev/oplabs-tools-artifacts/images/op-proposer:$branch
 
 RUN apk add bash
 
