@@ -61,7 +61,7 @@ def update_op_deps(args):
                 if line.endswith('// indirect\n'):
                     continue
 
-                if not re.search(r'github.com/ethereum-optimism/optimism/op-(\w+)', line):
+                if not re.search(r'github.com/ethereum-optimism/optimism', line):
                     continue
 
                 dep = line.strip().split(' ')[0]

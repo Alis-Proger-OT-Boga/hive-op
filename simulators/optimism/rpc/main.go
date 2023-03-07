@@ -38,6 +38,7 @@ var tests = []testSpec{
 	{Name: "http/TransactionCount", Run: transactionCountTest},
 	{Name: "http/TransactionInBlock", Run: transactionInBlockTest},
 	{Name: "http/TransactionReceipt", Run: TransactionReceiptTest},
+	{Name: "http/Logs", Run: logsTest},
 
 	// HTTP ABI tests.
 	{Name: "http/ABICall", Run: callContractTest},
@@ -68,6 +69,7 @@ var tests = []testSpec{
 	{Name: "ws/TransactionCount", Run: transactionCountTest},
 	{Name: "ws/TransactionInBlock", Run: transactionInBlockTest},
 	{Name: "ws/TransactionReceipt", Run: TransactionReceiptTest},
+	{Name: "ws/Logs", Run: logsTest},
 }
 
 func main() {
