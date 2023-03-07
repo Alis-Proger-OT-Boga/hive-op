@@ -390,14 +390,17 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 		L2ChainID:   uint64(L2ChainID),
 		L2BlockTime: 2,
 
-		FinalizationPeriodSeconds: 2,
-		MaxSequencerDrift:         maxSeqDrift,
-		SequencerWindowSize:       seqWindowSize,
-		ChannelTimeout:            chanTimeout,
-		P2PSequencerAddress:       d.Addresses.SequencerP2P,
-		BatchInboxAddress:         common.Address{0: 0x42, 19: 0xff}, // tbd
-		BatchSenderAddress:        d.Addresses.Batcher,
-		FinalSystemOwner:          d.Addresses.Deployer,
+		FinalizationPeriodSeconds:  2,
+		MaxSequencerDrift:          maxSeqDrift,
+		SequencerWindowSize:        seqWindowSize,
+		ChannelTimeout:             chanTimeout,
+		P2PSequencerAddress:        d.Addresses.SequencerP2P,
+		BatchInboxAddress:          common.Address{0: 0x42, 19: 0xff}, // tbd
+		BatchSenderAddress:         d.Addresses.Batcher,
+		FinalSystemOwner:           d.Addresses.Deployer,
+		L1FeeVaultRecipient:        d.Addresses.Alice,
+		BaseFeeVaultRecipient:      d.Addresses.Alice,
+		SequencerFeeVaultRecipient: d.Addresses.Alice,
 
 		L2OutputOracleSubmissionInterval: 6,
 		L2OutputOracleStartingTimestamp:  -1,
