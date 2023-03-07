@@ -23,4 +23,4 @@ use (
 
 replace github.com/ethereum/go-ethereum v1.11.2 => github.com/ethereum-optimism/op-geth v1.11.2-de8c5df46
 
-replace github.com/ethereum/hive/optimism v0.0.0 => github.com/ethereum-optimism/hive/optimism v0.0.0-20230307023951-2eec82af3da3
+replace github.com/ethereum/hive/optimism v0.0.0 => github.com/ethereum-optimism/hive/optimism v0.0.0-20230307104024-b5f7380456ce
