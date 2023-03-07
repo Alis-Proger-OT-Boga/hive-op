@@ -6,7 +6,7 @@ replace github.com/ethereum/go-ethereum v1.11.2 => github.com/ethereum-optimism/
 
 replace github.com/ethereum/hive v0.0.0 => github.com/ethereum-optimism/hive v0.0.0-20220929220349-8cbb5d7fffe7
 
-replace github.com/ethereum/hive/optimism v0.0.0 => github.com/ethereum-optimism/hive/optimism v0.0.0-20230307104024-b5f7380456ce
+replace github.com/ethereum/hive/optimism v0.0.0 => github.com/ethereum-optimism/hive/optimism v0.0.0-20230307222019-9a4e99dc041c
 
 require (
 	github.com/ethereum/go-ethereum v1.11.2
