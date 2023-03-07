@@ -385,7 +385,6 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 	defer d.mu.Unlock()
 	d.T.Log("creating hardhat deploy config")
 
-	regolithOffset := hexutil.Uint64(0)
 	config := &genesis.DeployConfig{
 		L1ChainID:   uint64(L1ChainID),
 		L2ChainID:   uint64(L2ChainID),
@@ -434,8 +433,7 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 		EIP1559Elasticity:  10,
 		EIP1559Denominator: 50,
 
-		FundDevAccounts:             true,
-		L2GenesisRegolithTimeOffset: &regolithOffset,
+		FundDevAccounts: true,
 	}
 
 	err := config.InitDeveloperDeployedAddresses()
@@ -460,7 +458,6 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 		d.L2Cfg.Alloc[addr] = alloc
 	}
 
-	regolithTime := uint64(0)
 	d.RollupCfg = &rollup.Config{
 		Genesis: rollup.Genesis{
 			L1: eth.BlockID{
@@ -483,7 +480,6 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 		BatchInboxAddress:      config.BatchInboxAddress,
 		DepositContractAddress: predeploys.DevOptimismPortalAddr,
 		L1SystemConfigAddress:  predeploys.DevSystemConfigAddr,
-		RegolithTime:           &regolithTime,
 	}
 	require.NoError(d.T, d.RollupCfg.Check(), "rollup config needs to be setup correctly")
 
