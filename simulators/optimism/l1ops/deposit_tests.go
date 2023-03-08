@@ -165,8 +165,8 @@ func erc20RoundtripTest(t *hivesim.T, env *optimism.TestEnv) {
 	// Derive the cross-domain message hash
 	l1Hash, err := crossdomain.HashCrossDomainMessageV1(
 		l1SentMessage.MessageNonce,
-		&l1SentMessage.Sender,
-		&l1SentMessage.Target,
+		l1SentMessage.Sender,
+		l1SentMessage.Target,
 		big.NewInt(0),
 		l1SentMessage.GasLimit,
 		l1SentMessage.Message,

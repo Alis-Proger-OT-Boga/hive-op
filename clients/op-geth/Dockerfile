@@ -1,5 +1,5 @@
-ARG branch=optimism-history
-FROM ethereumoptimism/op-geth:$branch
+ARG branch=optimism
+FROM us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:$branch
 
 RUN apk add curl jq bash
 RUN apk add --no-cache ca-certificates

@@ -100,7 +100,6 @@ func RunTests(ctx context.Context, t *hivesim.T, params *RunTestsParams) {
 				Devnet:  params.Devnet,
 			}
 
-			require.NoError(t, s.Acquire(ctx, 1))
 			t.Run(hivesim.TestSpec{
 				Name:        test.Name,
 				Description: test.Description,

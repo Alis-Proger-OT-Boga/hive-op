@@ -147,10 +147,7 @@ func (d *Devnet) AddOpL2(opts ...hivesim.StartOption) {
 		d.T.Fatal("no op-l2 chain configuration found")
 		return
 	}
-	defaultSettings := hivesim.Params{
-		"HIVE_ETH1_LOGLEVEL": "3",
-	}
-	input := []hivesim.StartOption{defaultSettings}
+	var input []hivesim.StartOption
 
 	l2GenesisCfg, err := json.Marshal(d.L2Cfg)
 	if err != nil {
@@ -385,19 +382,24 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 	defer d.mu.Unlock()
 	d.T.Log("creating hardhat deploy config")
 
+	regolithTime := uint64(0)
+	regolithOffset := hexutil.Uint64(regolithTime)
 	config := &genesis.DeployConfig{
 		L1ChainID:   uint64(L1ChainID),
 		L2ChainID:   uint64(L2ChainID),
 		L2BlockTime: 2,
 
-		FinalizationPeriodSeconds: 2,
-		MaxSequencerDrift:         maxSeqDrift,
-		SequencerWindowSize:       seqWindowSize,
-		ChannelTimeout:            chanTimeout,
-		P2PSequencerAddress:       d.Addresses.SequencerP2P,
-		BatchInboxAddress:         common.Address{0: 0x42, 19: 0xff}, // tbd
-		BatchSenderAddress:        d.Addresses.Batcher,
-		FinalSystemOwner:          d.Addresses.Deployer,
+		FinalizationPeriodSeconds:  2,
+		MaxSequencerDrift:          maxSeqDrift,
+		SequencerWindowSize:        seqWindowSize,
+		ChannelTimeout:             chanTimeout,
+		P2PSequencerAddress:        d.Addresses.SequencerP2P,
+		BatchInboxAddress:          common.Address{0: 0x42, 19: 0xff}, // tbd
+		BatchSenderAddress:         d.Addresses.Batcher,
+		FinalSystemOwner:           d.Addresses.Deployer,
+		L1FeeVaultRecipient:        d.Addresses.Alice,
+		BaseFeeVaultRecipient:      d.Addresses.Alice,
+		SequencerFeeVaultRecipient: d.Addresses.Alice,
 
 		L2OutputOracleSubmissionInterval: 6,
 		L2OutputOracleStartingTimestamp:  -1,
@@ -434,6 +436,8 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 		EIP1559Denominator: 50,
 
 		FundDevAccounts: true,
+
+		L2GenesisRegolithTimeOffset: &regolithOffset,
 	}
 
 	err := config.InitDeveloperDeployedAddresses()
@@ -480,6 +484,7 @@ func (d *Devnet) InitChain(maxSeqDrift uint64, seqWindowSize uint64, chanTimeout
 		BatchInboxAddress:      config.BatchInboxAddress,
 		DepositContractAddress: predeploys.DevOptimismPortalAddr,
 		L1SystemConfigAddress:  predeploys.DevSystemConfigAddr,
+		RegolithTime:           &regolithTime,
 	}
 	require.NoError(d.T, d.RollupCfg.Check(), "rollup config needs to be setup correctly")
 

@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"math/big"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"time"
 
 	"fmt"
 	"strings"
@@ -38,6 +39,7 @@ var tests = []testSpec{
 	{Name: "http/TransactionCount", Run: transactionCountTest},
 	{Name: "http/TransactionInBlock", Run: transactionInBlockTest},
 	{Name: "http/TransactionReceipt", Run: TransactionReceiptTest},
+	{Name: "http/Logs", Run: logsTest},
 
 	// HTTP ABI tests.
 	{Name: "http/ABICall", Run: callContractTest},
@@ -68,6 +70,7 @@ var tests = []testSpec{
 	{Name: "ws/TransactionCount", Run: transactionCountTest},
 	{Name: "ws/TransactionInBlock", Run: transactionInBlockTest},
 	{Name: "ws/TransactionReceipt", Run: TransactionReceiptTest},
+	{Name: "ws/Logs", Run: logsTest},
 }
 
 func main() {
@@ -128,6 +131,7 @@ func runAllTests(t *hivesim.T) {
 	// libraries in the optimism package.
 	adaptedTests := make([]*optimism.TestSpec, len(tests))
 	for i, test := range tests {
+		test := test
 		adaptedTests[i] = &optimism.TestSpec{
 			Name:        fmt.Sprintf("%s (%s)", test.Name, "ops-l2"),
 			Description: test.About,

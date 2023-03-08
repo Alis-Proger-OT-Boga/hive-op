@@ -363,14 +363,11 @@ func deployContractOutOfGasTest(t *LegacyTestEnv) {
 	}
 
 	// Wait for the transaction receipt.
-	receipt, err := optimism.WaitReceiptOK(t.Ctx(), t.Eth, deployTx.Hash())
+	receipt, err := optimism.WaitReceipt(t.Ctx(), t.Eth, deployTx.Hash(), types.ReceiptStatusFailed)
 	if err != nil {
 		t.Fatalf("unable to fetch tx receipt %v: %v", deployTx.Hash(), err)
 	}
 	// Check receipt fields.
-	if receipt.Status != types.ReceiptStatusFailed {
-		t.Errorf("receipt has status %d, want %d", receipt.Status, types.ReceiptStatusFailed)
-	}
 	if receipt.GasUsed != gasLimit {
 		t.Errorf("receipt has gasUsed %d, want %d", receipt.GasUsed, gasLimit)
 	}
@@ -448,6 +445,57 @@ func receiptTest(t *LegacyTestEnv) {
 	validateLog(t, tx, *receipt.Logs[3], predeployedContractAddr, receipt.Logs[0].Index+3, contractABI.Events["E3"], addrArgBytes)
 	validateLog(t, tx, *receipt.Logs[4], predeployedContractAddr, receipt.Logs[0].Index+4, contractABI.Events["E4"], addrArgBytes)
 	validateLog(t, tx, *receipt.Logs[5], predeployedContractAddr, receipt.Logs[0].Index+5, contractABI.Events["E5"], intArgBytes, addrArgBytes)
+}
+
+// logsTest tests whether the logs returned by eth_getLogs are correct.
+func logsTest(t *LegacyTestEnv) {
+	var (
+		contractABI, _ = abi.JSON(strings.NewReader(predeployedContractABI))
+		address        = t.Vault.CreateAccount(t.Ctx(), t.Eth, big.NewInt(params.Ether))
+		nonce          = uint64(0)
+
+		intArg = big.NewInt(rand.Int63())
+	)
+
+	payload, err := contractABI.Pack("events", intArg, address)
+	if err != nil {
+		t.Fatalf("Unable to prepare tx payload: %v", err)
+	}
+
+	rawTx := types.NewTransaction(nonce, predeployedContractAddr, big0, 500000, gasPrice, payload)
+	tx, err := t.Vault.SignTransaction(address, rawTx)
+	if err != nil {
+		t.Fatalf("Unable to sign deploy tx: %v", err)
+	}
+
+	if err := t.Eth.SendTransaction(t.Ctx(), tx); err != nil {
+		t.Fatalf("Unable to send transaction: %v", err)
+	}
+
+	// wait for transaction
+	receipt, err := optimism.WaitReceiptOK(t.Ctx(), t.Eth, tx.Hash())
+	if err != nil {
+		t.Fatalf("Unable to retrieve tx receipt %v: %v", tx.Hash(), err)
+	}
+
+	var (
+		addrArgBytes = common.LeftPadBytes(address.Bytes(), 32)
+	)
+
+	logs, err := t.Eth.FilterLogs(t.Ctx(), ethereum.FilterQuery{
+		BlockHash: &receipt.BlockHash,
+		Topics: [][]common.Hash{
+			{contractABI.Events["E4"].ID},
+			{common.BytesToHash(addrArgBytes)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Unable to retrieve logs: %v", err)
+	}
+
+	if len(logs) != 1 {
+		t.Fatalf("Want 1 log, got %d", len(logs))
+	}
 }
 
 // validateLog is a helper method that tests if the given set of logs are valid when the events method on the
