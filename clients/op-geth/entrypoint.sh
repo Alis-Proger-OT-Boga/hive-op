@@ -2,7 +2,7 @@
 set -exu
 
 # note: geth wants an integer log level (see L1 hive definition)
-VERBOSITY=${HIVE_ETH1_LOGLEVEL:-3}
+VERBOSITY=${HIVE_LOGLEVEL:-3}
 
 GETH_DATA_DIR=/db
 GETH_CHAINDATA_DIR="$GETH_DATA_DIR/geth/chaindata"

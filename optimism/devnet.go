@@ -147,10 +147,7 @@ func (d *Devnet) AddOpL2(opts ...hivesim.StartOption) {
 		d.T.Fatal("no op-l2 chain configuration found")
 		return
 	}
-	defaultSettings := hivesim.Params{
-		"HIVE_ETH1_LOGLEVEL": "3",
-	}
-	input := []hivesim.StartOption{defaultSettings}
+	var input []hivesim.StartOption
 
 	l2GenesisCfg, err := json.Marshal(d.L2Cfg)
 	if err != nil {
