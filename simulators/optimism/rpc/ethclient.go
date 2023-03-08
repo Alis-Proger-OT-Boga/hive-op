@@ -363,14 +363,11 @@ func deployContractOutOfGasTest(t *LegacyTestEnv) {
 	}
 
 	// Wait for the transaction receipt.
-	receipt, err := optimism.WaitReceiptOK(t.Ctx(), t.Eth, deployTx.Hash())
+	receipt, err := optimism.WaitReceipt(t.Ctx(), t.Eth, deployTx.Hash(), types.ReceiptStatusFailed)
 	if err != nil {
 		t.Fatalf("unable to fetch tx receipt %v: %v", deployTx.Hash(), err)
 	}
 	// Check receipt fields.
-	if receipt.Status != types.ReceiptStatusFailed {
-		t.Errorf("receipt has status %d, want %d", receipt.Status, types.ReceiptStatusFailed)
-	}
 	if receipt.GasUsed != gasLimit {
 		t.Errorf("receipt has gasUsed %d, want %d", receipt.GasUsed, gasLimit)
 	}
