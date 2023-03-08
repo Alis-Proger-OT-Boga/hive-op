@@ -20,12 +20,16 @@ import (
 // callContractTest uses the generated ABI binding to call methods in the
 // pre-deployed contract.
 func callContractTest(t *LegacyTestEnv) {
+	unfundedAccount := t.Vault.CreateAccount(t.Ctx(), t.Eth, common.Big0)
 	contract, err := testcontract.NewContractCaller(predeployedContractAddr, t.Eth)
 	if err != nil {
 		t.Fatalf("Unable to instantiate contract caller: %v", err)
 	}
 
-	opts := &bind.CallOpts{Pending: true}
+	// Make eth_call requests from an account with 0 balance so they fail if any gas costs are charged
+	// Off-chain tx like eth_call shouldn't ever require having a balance.
+	// The 0x00 address often winds up with a non-zero balance from other tests "burning" ETH.
+	opts := &bind.CallOpts{Pending: true, From: unfundedAccount}
 	value, err := contract.Ui(opts)
 	if err != nil {
 		t.Fatalf("Unable to fetch `ui` variable: %v", err)
