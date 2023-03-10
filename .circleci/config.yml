@@ -41,16 +41,21 @@ jobs:
             -sim=<<parameters.sim>> \
             -sim.loglevel=5 \
             -docker.pull=true \
-            -client=go-ethereum,op-geth_optimism,op-proposer_develop,op-batcher_develop,op-node_develop |& tee /tmp/build/hive.log || echo "failed."
+            -client=go-ethereum,op-geth_optimism,op-proposer_develop,op-batcher_develop,op-node_develop |& tee /tmp/build/hive.log
       - run:
           command: |
             tar -cvf /tmp/workspace.tgz -C /home/circleci/project /home/circleci/project/workspace
           name: "Archive workspace"
+          when: always
       - store_artifacts:
           path: /tmp/workspace.tgz
           destination: hive-workspace.tgz
+          when: always
       - run:
-          command: "! grep 'pass.*=false' /tmp/build/hive.log"
+          command: |
+            go run /tmp/build/junit/main.go /home/circleci/project/workspace/logs/*.json > /home/circleci/project/workspace/logs/junit.xml
+      - store_test_results:
+          path: /home/circleci/project/workspace/logs/junit.xml
       - slack/notify:
           channel: C03N11M0BBN
           event: fail
