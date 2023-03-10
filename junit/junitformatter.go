@@ -23,42 +23,11 @@ func main() {
 	var suites []TestSuite
 
 	for i := 1; i < len(os.Args); i++ {
-		inData, err := os.ReadFile(os.Args[i])
-
+		suite, err := readInput(os.Args[i])
 		if err != nil {
 			fail(err)
 		}
-		var suite libhive.TestSuite
-		err = json.Unmarshal(inData, &suite)
-		if err != nil {
-			fail(err)
-		}
-		junitSuite := TestSuite{
-			Name:       suite.Name,
-			Failures:   0,
-			Tests:      len(suite.TestCases),
-			Properties: Properties{},
-		}
-		for clientName, clientVersion := range suite.ClientVersions {
-			junitSuite.Properties.Properties = append(junitSuite.Properties.Properties, Property{
-				Name:  clientName,
-				Value: clientVersion,
-			})
-		}
-		for _, testCase := range suite.TestCases {
-			if !testCase.SummaryResult.Pass {
-				junitSuite.Failures = junitSuite.Failures + 1
-			}
-			junitCase := TestCase{
-				Name: testCase.Name,
-			}
-			if testCase.SummaryResult.Pass {
-				junitCase.SystemOut = testCase.SummaryResult.Details
-			} else {
-				junitCase.Failure = &Failure{Message: testCase.SummaryResult.Details}
-			}
-			junitSuite.TestCases = append(junitSuite.TestCases, junitCase)
-		}
+		junitSuite := mapTestSuite(suite)
 		result.Failures = result.Failures + junitSuite.Failures
 		result.Tests = result.Tests + junitSuite.Tests
 		suites = append(suites, junitSuite)
@@ -70,6 +39,54 @@ func main() {
 		fail(err)
 	}
 	fmt.Println(string(junit))
+}
+
+func readInput(file string) (libhive.TestSuite, error) {
+	inData, err := os.ReadFile(file)
+	if err != nil {
+		return libhive.TestSuite{}, fmt.Errorf("failed to read file '%v': %w", file, err)
+	}
+
+	var suite libhive.TestSuite
+	err = json.Unmarshal(inData, &suite)
+	if err != nil {
+		return libhive.TestSuite{}, fmt.Errorf("failed to parse file '%v': %w", file, err)
+	}
+	return suite, nil
+}
+
+func mapTestSuite(suite libhive.TestSuite) TestSuite {
+	junitSuite := TestSuite{
+		Name:       suite.Name,
+		Failures:   0,
+		Tests:      len(suite.TestCases),
+		Properties: Properties{},
+	}
+	for clientName, clientVersion := range suite.ClientVersions {
+		junitSuite.Properties.Properties = append(junitSuite.Properties.Properties, Property{
+			Name:  clientName,
+			Value: clientVersion,
+		})
+	}
+	for _, testCase := range suite.TestCases {
+		if !testCase.SummaryResult.Pass {
+			junitSuite.Failures = junitSuite.Failures + 1
+		}
+		junitSuite.TestCases = append(junitSuite.TestCases, mapTestCase(testCase))
+	}
+	return junitSuite
+}
+
+func mapTestCase(testCase *libhive.TestCase) TestCase {
+	junitCase := TestCase{
+		Name: testCase.Name,
+	}
+	if testCase.SummaryResult.Pass {
+		junitCase.SystemOut = testCase.SummaryResult.Details
+	} else {
+		junitCase.Failure = &Failure{Message: testCase.SummaryResult.Details}
+	}
+	return junitCase
 }
 
 func fail(reason error) {
