@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/ethereum/hive/internal/libhive"
 )
@@ -77,16 +78,18 @@ func mapTestSuite(suite libhive.TestSuite) TestSuite {
 	return junitSuite
 }
 
-func mapTestCase(testCase *libhive.TestCase) TestCase {
-	junitCase := TestCase{
-		Name: testCase.Name,
+func mapTestCase(source *libhive.TestCase) TestCase {
+	result := TestCase{
+		Name: source.Name,
 	}
-	if testCase.SummaryResult.Pass {
-		junitCase.SystemOut = testCase.SummaryResult.Details
+	if source.SummaryResult.Pass {
+		result.SystemOut = source.SummaryResult.Details
 	} else {
-		junitCase.Failure = &Failure{Message: testCase.SummaryResult.Details}
+		result.Failure = &Failure{Message: source.SummaryResult.Details}
 	}
-	return junitCase
+	duration := source.End.Sub(source.Start)
+	result.Time = strconv.FormatFloat(duration.Seconds(), 'f', 6, 64)
+	return result
 }
 
 func fail(reason error) {
@@ -133,6 +136,7 @@ type TestSuite struct {
 
 type TestCase struct {
 	Name      string   `xml:"name,attr"`
+	Time      string   `xml:"time,attr"`
 	Failure   *Failure `xml:"failure,omitempty"`
 	SystemOut string   `xml:"system-out,omitempty"`
 }
