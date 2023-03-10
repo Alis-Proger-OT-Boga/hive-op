@@ -155,7 +155,6 @@ func genesisHeaderByHashTest(t *LegacyTestEnv) {
 	if d := Diff(gblock.Header(), headerByHash); d != "" {
 		t.Fatal("genesis header reported by node differs from expected header:\n", d)
 	}
-	t.Fatal("Oh no! I did something stupid!")
 }
 
 // headerByNumberTest fetched the known genesis header and compares
