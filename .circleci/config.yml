@@ -15,10 +15,11 @@ jobs:
       - go/mod-download
       - go/save-cache
       - run: {command: "go build ."}
+      - run: {command: "go build junit/junitformatter.go"}
       # Store the executable.
       - persist_to_workspace:
           root: .
-          paths: ["hive"]
+          paths: ["hive", "junitformatter"]
 
   # The below job runs the optimism test simulations. This requires a virtual
   # machine instead of the container-based build environment because hive needs
@@ -53,9 +54,11 @@ jobs:
           when: always
       - run:
           command: |
-            go run /tmp/build/junit/main.go /home/circleci/project/workspace/logs/*.json > /home/circleci/project/workspace/logs/junit.xml
+            /tmp/build/junitformatter /home/circleci/project/workspace/logs/*.json > /home/circleci/project/workspace/logs/junit.xml
+          when: always
       - store_test_results:
           path: /home/circleci/project/workspace/logs/junit.xml
+          when: always
       - slack/notify:
           channel: C03N11M0BBN
           event: fail
