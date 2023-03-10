@@ -59,6 +59,9 @@ jobs:
       - store_test_results:
           path: /home/circleci/project/workspace/logs/junit.xml
           when: always
+      - store_artifacts:
+          path: /home/circleci/project/workspace/logs/junit.xml
+          when: always
       - slack/notify:
           channel: C03N11M0BBN
           event: fail
